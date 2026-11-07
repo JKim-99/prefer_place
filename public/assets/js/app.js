@@ -163,7 +163,7 @@
       $('featured-dial').replaceChildren(label); $('featured-link').disabled = false;
     }
     changeFeatured();
-    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) setInterval(changeFeatured, 1000);
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) setInterval(changeFeatured, 3000);
     chosen = safeStore.get(); if (chosen) renderMap();
   }).catch(() => { $('map-error').hidden = false; $('map-error').textContent = '지역 데이터를 불러오지 못했어요. 페이지를 새로고침해 주세요.'; $('open-picker').disabled = true; $('change-location').disabled = true; });
 })();
