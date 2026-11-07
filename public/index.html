@@ -6,9 +6,10 @@
   <meta name="description" content="좋아하는 장소와 그 이유를 모으는 나만의 취향 지도">
   <meta name="theme-color" content="#f8f7f1">
   <title>취향지도 — 좋아하는 장소를 모으는 지도</title>
-  <link rel="stylesheet" href="assets/css/styles.css?v=11">
-  <script src="assets/js/app.js?v=11" defer></script>
+  <link rel="stylesheet" href="assets/css/styles.css?v=12">
+  <script src="assets/js/app.js?v=12" defer></script>
   <script src="assets/js/auth.js?v=1" defer></script>
+  <script src="assets/js/places.js?v=1" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">본문 바로가기</a>
@@ -24,14 +25,14 @@
     </section>
     <section class="explore" id="explore" aria-labelledby="explore-title" hidden>
       <div class="wrap explore-inner">
-        <button class="back-button" id="back-home" type="button">← 처음으로</button><div class="section-top"><div><h2 id="explore-title">우리 동네를 <em>둘러볼까요?</em></h2></div><span class="section-number">02 / EXPLORE</span></div>
+        <button class="back-button" id="back-home" type="button">← 처음으로</button><div class="section-top"><div><h2 id="explore-title">지역 취향지도</h2></div><span class="section-number">02 / EXPLORE</span></div>
         <div class="map-layout">
           <div class="map-card">
-            <div class="map-head"><div><span class="map-kicker">선택한 지역</span><h3 id="selected-title">아직 선택한 지역이 없어요</h3><p id="selected-subtitle">시·도와 시·군·구를 선택해 주세요.</p></div><button class="change-button" id="change-location" type="button">다른 지역 선택하기</button></div>
-            <div class="map-stage" id="map-stage"><div class="map-empty" id="map-empty"><span>⌖</span><strong>어디에서 시작해 볼까요?</strong><p>지금 있는 지역을 선택하고<br>나만의 지도를 시작해 보세요.</p></div><svg id="region-map" role="img" aria-label="선택한 지역의 행정구역 지도" hidden></svg><p class="map-error" id="map-error" role="status" hidden></p></div>
+            <div class="map-head"><button class="change-button" id="change-location" type="button">다른 지역 선택하기</button><div class="place-views" role="group" aria-label="장소 보기"><button type="button" class="place-view is-active" data-view="mine" aria-pressed="true">내 장소</button><button type="button" class="place-view" data-view="popular" aria-pressed="false">많이 방문한 장소</button><button type="button" class="place-view" data-view="anonymous" aria-pressed="false">익명유저님의 장소</button></div></div>
+            <div class="map-stage" id="map-stage"><div class="map-empty" id="map-empty"><span>⌖</span><strong>어디에서 시작해 볼까요?</strong><p>지금 있는 지역을 선택하고<br>나만의 지도를 시작해 보세요.</p></div><svg id="region-map" role="img" aria-label="선택한 지역의 행정구역 지도" hidden></svg><fieldset class="place-legend" disabled><legend>장소 종류 · 준비 중</legend><label><input type="checkbox" value="restaurant" checked> 🍴 음식점</label><label><input type="checkbox" value="cafe" checked> ☕ 카페</label><label><input type="checkbox" value="stay" checked> 🛏 숙박</label><label><input type="checkbox" value="other" checked> 📍 기타</label></fieldset><div class="place-search-box"><button id="place-search-open" type="button">⌕ 장소 추가하기</button></div><p class="map-error" id="map-error" role="status" hidden></p></div>
 
           </div>
-
+          <p id="place-status" class="place-status" role="status">장소 기능을 준비하고 있어요.</p>
         </div>
       </div>
     </section>

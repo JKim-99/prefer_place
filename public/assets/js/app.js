@@ -62,8 +62,7 @@
   function renderMap() {
     const selected = features.filter((f) => f.properties.sidonm === chosen.sido && cityName(f.properties.sggnm) === chosen.district);
     if (!selected.length) return;
-    $('selected-title').textContent = chosen.district;
-    $('selected-subtitle').textContent = chosen.sido;
+    $('explore-title').textContent = `${chosen.district} 취향지도`;
     $('map-empty').hidden = true; svg.removeAttribute('hidden'); svg.replaceChildren();
     svg.setAttribute('aria-label', `${chosen.sido} 지도에서 ${chosen.district} 강조`);
     const allPoints = selected.flatMap((f) => rings(f.geometry).flat());
