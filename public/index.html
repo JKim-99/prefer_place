@@ -3,123 +3,51 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="index,follow">
-  <meta name="description" content="내가 좋아한 장소와 그 이유를 지역 지도에 모으는 개인 취향 아카이브">
-  <meta property="og:title" content="취향지도 — 내가 좋아한 장소 아카이브">
-  <meta name="theme-color" content="#f5f2e9">
-  <title>취향지도 — 내가 좋아한 장소 아카이브</title>
+  <meta name="description" content="좋아하는 장소와 그 이유를 모으는 나만의 취향 지도">
+  <meta name="theme-color" content="#f8f7f1">
+  <title>취향지도 — 좋아하는 장소를 모으는 지도</title>
   <link rel="stylesheet" href="assets/css/styles.css">
-  <script src="assets/js/app.js" defer></script>
+  <script src="assets/js/app.js?v=3" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">본문 바로가기</a>
   <header class="site-header">
-    <a class="brand" href="index.html" aria-label="취향지도 홈"><span class="brand-mark" aria-hidden="true">취</span><span class="brand-name">취향지도<span>PLACE ARCHIVE</span></span></a>
-    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-nav" aria-label="메뉴 열기"><span></span><span></span><span></span></button>
-    <nav class="primary-nav" id="primary-nav" aria-label="주 메뉴">
-      <a class="nav-link is-current" href="index.html" aria-current="page">장소 탐색</a>
-      <a class="nav-link" href="#how-it-works">서비스 소개</a>
-      <a class="nav-link" href="#collections">내 컬렉션</a>
-      <a class="nav-cta" href="#explore">지역 둘러보기 <span aria-hidden="true">↘</span></a>
-    </nav>
+    <a class="brand" href="index.html"><span class="brand-icon" aria-hidden="true">✳</span><span>취향지도<small>PLACE ARCHIVE</small></span></a>
+    <a class="header-link" href="#about">취향지도 소개 <span aria-hidden="true">↗</span></a>
   </header>
-
   <main id="main">
-    <section class="hero" aria-labelledby="hero-title">
+    <section class="hero wrap">
       <div class="hero-copy">
-        <p class="eyebrow"><span class="eyebrow-dot"></span> PLACES, THE WAY YOU FEEL</p>
-        <h1 id="hero-title">좋아한 장소를<br><em>나만의 지도에</em></h1>
-        <p class="hero-description">어디를 갔는지보다, 왜 좋았는지를 기록해요.<br>나의 장소가 쌓이면 동네의 취향이 보여요.</p>
-        <a class="button button-dark" href="#explore">내 주변 탐색하기 <span aria-hidden="true">→</span></a>
-        <p class="hero-caption">MY PLACES · MY NOTES · OUR NEIGHBORHOOD</p>
+        <p class="eyebrow"><span></span> YOUR PLACES, YOUR STORY</p>
+        <h1>좋아하는 곳이<br>모여 <em>내가 되는 지도.</em></h1>
+        <p class="hero-description">자주 걷는 동네부터 언젠가 다시 가고 싶은 곳까지.<br>나의 시선으로 장소와 취향을 차곡차곡 기록해요.</p>
+        <button class="location-button" id="open-picker" type="button"><span aria-hidden="true">⌖</span> 지금 내가 있는 곳 지정하기 <span aria-hidden="true">↗</span></button>
+        <p class="location-note">위치 정보 수집 없이, 지역을 직접 선택해요.</p>
       </div>
-      <div class="hero-art" aria-label="장소 기록과 지도 미리보기">
-        <div class="map-orbit orbit-a"></div><div class="map-orbit orbit-b"></div>
-        <span class="map-pin pin-one" aria-hidden="true">✳</span>
-        <span class="map-pin pin-two" aria-hidden="true">♥</span>
-        <span class="map-pin pin-three" aria-hidden="true">✦</span>
-        <div class="mini-place-card"><span class="mini-card-icon" aria-hidden="true">☕</span><div><strong>오후의 작은 쉼</strong><small>조용함 · 창가 자리</small></div><span class="mini-heart" aria-hidden="true">♥</span></div>
-        <span class="map-label label-one">천안시</span><span class="map-label label-two">불당동</span>
+      <div class="hero-visual" aria-hidden="true">
+        <div class="visual-grid"></div><div class="visual-ring ring-one"></div><div class="visual-ring ring-two"></div>
+        <span class="visual-spark">✳</span><span class="visual-pin">♥</span><span class="visual-dot">✦</span>
+        <div class="visual-card"><span class="visual-card-icon">⌁</span><div><small>MY FAVORITE PLACES</small><strong>취향이 머무는 곳</strong><p>나만의 이야기를 지도 위에</p></div></div>
+        <span class="visual-caption">A LITTLE MAP OF YOU <span>↗</span></span>
       </div>
-      <a class="scroll-cue" href="#explore"><span></span> SCROLL TO EXPLORE</a>
+      <div class="hero-bottom"><span>01 / START HERE</span><span>우리 동네에서 시작하는 작은 기록 <span aria-hidden="true">↓</span></span></div>
     </section>
-
-    <section class="intro-strip" aria-label="서비스 핵심">
-      <p>장소를 발견하고</p><span aria-hidden="true">✳</span><p>좋아한 이유를 기록하고</p><span aria-hidden="true">✳</span><p>동네의 취향을 나눠요</p>
-    </section>
-
-    <section class="explore section-wrap" id="explore" aria-labelledby="explore-title">
-      <div class="section-heading">
-        <div><p class="eyebrow">EXPLORE BY PLACE</p><h2 id="explore-title">어느 동네를 <em>둘러볼까요?</em></h2><p class="section-description">지역을 고르고, 지도와 목록으로 나만의 장소를 찾아보세요.</p></div>
-        <div class="view-switch" role="group" aria-label="장소 보기 방식">
-          <button class="view-button is-active" id="map-view-button" type="button" aria-pressed="true">지도 보기</button>
-          <button class="view-button" id="list-view-button" type="button" aria-pressed="false">목록 보기</button>
-        </div>
-      </div>
-
-      <div class="region-picker" aria-label="지역 선택">
-        <label><span>시·도</span><select id="sido-select"><option value="충청남도">충청남도</option><option value="서울특별시">서울특별시</option><option value="경기도">경기도</option></select></label>
-        <span class="region-chevron" aria-hidden="true">›</span>
-        <label><span>시·군·구</span><select id="sigungu-select"><option value="천안시">천안시</option><option value="아산시">아산시</option></select></label>
-        <span class="region-chevron" aria-hidden="true">›</span>
-        <label><span>읍·면·동</span><select id="dong-select"><option value="불당동">불당동</option><option value="성정동">성정동</option><option value="두정동">두정동</option></select></label>
-      </div>
-
-      <div class="explore-toolbar">
-        <div class="category-chips" role="group" aria-label="장소 종류">
-          <button class="category-chip is-active" type="button" data-place-category="all" aria-pressed="true">전체</button>
-          <button class="category-chip" type="button" data-place-category="restaurant" aria-pressed="false">음식점</button>
-          <button class="category-chip" type="button" data-place-category="cafe" aria-pressed="false">카페</button>
-          <button class="category-chip" type="button" data-place-category="stay" aria-pressed="false">숙박</button>
-          <button class="category-chip" type="button" data-place-category="beauty" aria-pressed="false">미용실</button>
-          <button class="category-chip" type="button" data-place-category="culture" aria-pressed="false">문화·여가</button>
-        </div>
-        <label class="place-search"><span class="sr-only">장소 이름 검색</span><input id="place-search" type="search" placeholder="장소 이름 검색"><span aria-hidden="true">⌕</span></label>
-      </div>
-
-      <div class="explore-layout" id="explore-layout" data-view="map">
-        <section class="map-panel" aria-label="대한민국 장소 지도 미리보기">
-          <div class="map-placeholder-grid" aria-hidden="true"></div>
-          <div class="map-provider-note"><span class="provider-note-mark" aria-hidden="true">⌖</span><strong>나만의 장소 지도가 시작될 곳</strong><p>지역을 선택하면 이곳에서 장소를 탐색할 수 있어요.</p><small>지도 제공자를 선택한 뒤 연결할 예정입니다.</small></div>
-          <span class="map-preview-chip chip-north">천안</span><span class="map-preview-chip chip-south">아산</span>
-          <button class="map-control map-control-plus" type="button" aria-label="지도 확대">+</button>
-          <button class="map-control map-control-minus" type="button" aria-label="지도 축소">−</button>
-          <span class="map-attribution">지도 데이터 제공자 선정 후 출처 표시</span>
-        </section>
-        <section class="place-list-panel" aria-labelledby="place-list-title">
-          <div class="list-panel-heading"><div><p class="eyebrow">CHEONAN · BULDANG</p><h3 id="place-list-title">취향 장소 <span id="place-count">3</span></h3></div><button class="sort-button" type="button">저장 많은 순⌄</button></div>
-          <div class="place-cards" id="place-cards">
-            <article class="place-card" data-place-category="cafe">
-              <div class="place-card-visual place-visual-cafe"><span aria-hidden="true">☕</span><small>가상의 예시</small></div>
-              <div class="place-card-body"><div class="place-card-overline"><span class="place-type">카페</span><span class="place-saves">♥ 24</span></div><h4>오후의 작은 쉼</h4><p class="place-address">충남 천안시 서북구 불당동</p><div class="mood-tags"><span>조용함</span><span>창가 자리</span><span>혼자 가기 좋아요</span></div><p class="place-note">“해 질 무렵 창가에 앉아 책 읽기 좋아요.”</p></div>
-            </article>
-            <article class="place-card" data-place-category="restaurant">
-              <div class="place-card-visual place-visual-food"><span aria-hidden="true">🍜</span><small>가상의 예시</small></div>
-              <div class="place-card-body"><div class="place-card-overline"><span class="place-type">음식점</span><span class="place-saves">♥ 18</span></div><h4>골목의 따뜻한 한 그릇</h4><p class="place-address">충남 천안시 서북구 불당동</p><div class="mood-tags"><span>든든함</span><span>혼밥</span><span>점심</span></div><p class="place-note">“바쁜 날에도 편하게 들를 수 있는 곳.”</p></div>
-            </article>
-            <article class="place-card" data-place-category="beauty">
-              <div class="place-card-visual place-visual-beauty"><span aria-hidden="true">✂</span><small>가상의 예시</small></div>
-              <div class="place-card-body"><div class="place-card-overline"><span class="place-type">미용실</span><span class="place-saves">♥ 9</span></div><h4>느린 오후 헤어룸</h4><p class="place-address">충남 천안시 서북구 불당동</p><div class="mood-tags"><span>차분함</span><span>세심한 상담</span></div><p class="place-note">“원하는 느낌을 천천히 같이 찾아줘요.”</p></div>
-            </article>
+    <section class="explore" id="explore" aria-labelledby="explore-title">
+      <div class="wrap explore-inner">
+        <div class="section-top"><div><p class="eyebrow"><span></span> EXPLORE YOUR NEIGHBORHOOD</p><h2 id="explore-title">우리 동네를 <em>둘러볼까요?</em></h2><p>지역을 선택하면 그곳을 중심으로 취향 지도가 펼쳐져요.</p></div><span class="section-number">02 / EXPLORE</span></div>
+        <div class="map-layout">
+          <div class="map-card">
+            <div class="map-head"><div><span class="map-kicker">MY SELECTED AREA</span><h3 id="selected-title">아직 선택한 지역이 없어요</h3><p id="selected-subtitle">시·도와 시·군·구를 선택해 주세요.</p></div><button class="change-button" id="change-location" type="button">지역 선택 <span aria-hidden="true">↗</span></button></div>
+            <div class="map-stage" id="map-stage"><div class="map-empty" id="map-empty"><span>⌖</span><strong>어디에서 시작해 볼까요?</strong><p>지금 있는 지역을 선택하고<br>나만의 지도를 시작해 보세요.</p></div><svg id="region-map" role="img" aria-label="선택한 지역의 행정구역 지도" hidden></svg><p class="map-error" id="map-error" role="status" hidden></p></div>
+            <div class="map-foot"><div class="legend"><span><i class="legend-selected"></i> 선택한 지역</span><span><i class="legend-other"></i> 주변 지역</span></div><a href="https://github.com/DevMinGeonPark/mapcn-kr" target="_blank" rel="noopener noreferrer">경계 데이터 출처 ↗</a></div>
           </div>
-        </section>
+          <aside class="archive-card"><div><span class="archive-number">YOUR PLACE ARCHIVE <span>✳</span></span><h3>이곳에서 발견할<br><em>나의 취향들.</em></h3><p>마음에 든 공간과 그 이유를<br>하나씩 모아갈 수 있도록 준비하고 있어요.</p></div><div class="category-list"><div><span>01</span><strong>음식점</strong><span>↗</span></div><div><span>02</span><strong>카페</strong><span>↗</span></div><div><span>03</span><strong>숙박</strong><span>↗</span></div><div><span>04</span><strong>그 밖의 장소</strong><span>↗</span></div></div><small>장소 기록과 둘러보기 기능은 준비 중이에요.</small></aside>
+        </div>
       </div>
     </section>
-
-    <section class="how-it-works" id="how-it-works">
-      <div class="section-wrap how-inner"><div><p class="eyebrow">A MAP OF YOUR TASTE</p><h2>장소보다 먼저,<br><em>좋아한 이유를</em> 모아요.</h2></div><p>기록이 쌓이면 나의 취향이 선명해지고, 이웃의 익명 기록은 동네의 새로운 분위기를 발견하게 해줘요.</p></div>
-    </section>
-
-    <section class="collections section-wrap" id="collections" aria-labelledby="collections-title">
-      <div class="section-heading"><div><p class="eyebrow">YOUR PRIVATE ARCHIVE</p><h2 id="collections-title">내 취향을 담는 <em>컬렉션</em></h2><p class="section-description">저장한 장소를 나만의 기준으로 모아 보세요.</p></div></div>
-      <div class="collection-preview"><span class="collection-icon" aria-hidden="true">✦</span><div><strong>아직 컬렉션을 만들지 않았어요</strong><p>장소를 저장하면 ‘다시 가고 싶은 곳’, ‘조용한 카페’처럼 나만의 목록을 만들 수 있어요.</p></div><span class="collection-lock" aria-label="비공개">비공개</span></div>
-    </section>
+    <section class="about wrap" id="about"><p class="eyebrow"><span></span> A MAP OF WHAT YOU LOVE</p><h2>장소보다 오래 남는 건,<br><em>그곳에서의 마음이니까.</em></h2><p>당신의 취향이 담긴 장소들을 한 지도에 모아보세요.</p><span aria-hidden="true">✳</span></section>
   </main>
-
-  <footer class="site-footer">
-    <a class="brand brand-footer" href="index.html"><span class="brand-mark" aria-hidden="true">취</span><span class="brand-name">취향지도<span>PLACE ARCHIVE</span></span></a>
-    <div class="footer-links"><a href="#how-it-works">서비스 소개</a><a href="#explore">장소 탐색</a></div>
-    <small>취향지도는 장소에 대한 개인의 경험을 기록하는 서비스 시안입니다. 장소 정보와 지도 데이터는 제공자 약관을 준수합니다.</small>
-  </footer>
+  <footer><div class="wrap footer-inner"><div class="brand"><span class="brand-icon" aria-hidden="true">✳</span><span>취향지도<small>PLACE ARCHIVE</small></span></div><p>좋아하는 장소가 쌓여 나를 보여주는 지도.</p><small>© PLACE ARCHIVE</small></div></footer>
+  <dialog id="region-dialog" aria-labelledby="dialog-title"><div class="dialog-head"><div><p class="eyebrow"><span></span> CHOOSE YOUR AREA</p><h2 id="dialog-title">지금 어디에 있나요?</h2><p>현재 지역을 목록에서 직접 선택해 주세요.</p></div><button class="close-button" id="close-picker" type="button" aria-label="지역 선택 닫기">×</button></div><div class="picker-columns"><section><h3><span>01</span> 시·도 선택</h3><div class="picker-list" id="sido-list" aria-label="시도 목록"></div></section><section><h3><span>02</span> 시·군·구 선택</h3><div class="picker-list" id="sigungu-list" aria-label="시군구 목록"><p class="list-placeholder">먼저 시·도를 선택해 주세요.</p></div></section></div><div class="dialog-footer"><span id="picker-selection">지역을 선택해 주세요</span><button id="confirm-region" type="button" disabled>선택 완료 <span aria-hidden="true">→</span></button></div></dialog>
 </body>
 </html>
