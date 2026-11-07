@@ -31,7 +31,7 @@
       const names = [...new Set(features.filter((f) => f.properties.sidonm === sido).map((f) => cityName(f.properties.sggnm)))].sort((a,b) => a.localeCompare(b, 'ko'));
       names.forEach((name) => sigunguList.append(button(name, name === district, () => { district = name; renderPicker(); })));
     }
-    confirm.disabled = !district; $('picker-selection').textContent = [sido, district].filter(Boolean).join('  /  ') || '지역을 선택해 주세요';
+    confirm.disabled = !district;
   }
   function openPicker() { sido = chosen?.sido || ''; district = chosen?.district || ''; renderPicker(); dialog.showModal(); }
   $('open-picker').addEventListener('click', openPicker);
@@ -63,7 +63,7 @@
     const selected = features.filter((f) => f.properties.sidonm === chosen.sido && cityName(f.properties.sggnm) === chosen.district);
     if (!selected.length) return;
     $('selected-title').textContent = chosen.district;
-    $('selected-subtitle').textContent = `${chosen.sido} · 선택한 지역`;
+    $('selected-subtitle').textContent = chosen.sido;
     $('map-empty').hidden = true; svg.removeAttribute('hidden'); svg.replaceChildren();
     svg.setAttribute('aria-label', `${chosen.sido} 지도에서 ${chosen.district} 강조`);
     const allPoints = selected.flatMap((f) => rings(f.geometry).flat());

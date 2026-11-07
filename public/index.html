@@ -6,8 +6,8 @@
   <meta name="description" content="좋아하는 장소와 그 이유를 모으는 나만의 취향 지도">
   <meta name="theme-color" content="#f8f7f1">
   <title>취향지도 — 좋아하는 장소를 모으는 지도</title>
-  <link rel="stylesheet" href="assets/css/styles.css?v=10">
-  <script src="assets/js/app.js?v=10" defer></script>
+  <link rel="stylesheet" href="assets/css/styles.css?v=11">
+  <script src="assets/js/app.js?v=11" defer></script>
   <script src="assets/js/auth.js?v=1" defer></script>
 </head>
 <body>
@@ -24,10 +24,10 @@
     </section>
     <section class="explore" id="explore" aria-labelledby="explore-title" hidden>
       <div class="wrap explore-inner">
-        <button class="back-button" id="back-home" type="button">← 처음으로</button><div class="section-top"><div><p class="eyebrow"><span></span> EXPLORE YOUR NEIGHBORHOOD</p><h2 id="explore-title">우리 동네를 <em>둘러볼까요?</em></h2><p>지역을 선택하면 그곳을 중심으로 취향 지도가 펼쳐져요.</p></div><span class="section-number">02 / EXPLORE</span></div>
+        <button class="back-button" id="back-home" type="button">← 처음으로</button><div class="section-top"><div><h2 id="explore-title">우리 동네를 <em>둘러볼까요?</em></h2></div><span class="section-number">02 / EXPLORE</span></div>
         <div class="map-layout">
           <div class="map-card">
-            <div class="map-head"><div><span class="map-kicker">MY SELECTED AREA</span><h3 id="selected-title">아직 선택한 지역이 없어요</h3><p id="selected-subtitle">시·도와 시·군·구를 선택해 주세요.</p></div><button class="change-button" id="change-location" type="button">지역 선택 <span aria-hidden="true">↗</span></button></div>
+            <div class="map-head"><div><span class="map-kicker">선택한 지역</span><h3 id="selected-title">아직 선택한 지역이 없어요</h3><p id="selected-subtitle">시·도와 시·군·구를 선택해 주세요.</p></div><button class="change-button" id="change-location" type="button">다른 지역 선택하기</button></div>
             <div class="map-stage" id="map-stage"><div class="map-empty" id="map-empty"><span>⌖</span><strong>어디에서 시작해 볼까요?</strong><p>지금 있는 지역을 선택하고<br>나만의 지도를 시작해 보세요.</p></div><svg id="region-map" role="img" aria-label="선택한 지역의 행정구역 지도" hidden></svg><p class="map-error" id="map-error" role="status" hidden></p></div>
 
           </div>
@@ -39,6 +39,6 @@
   </main>
 
   <dialog id="auth-dialog" aria-labelledby="auth-title"><div class="auth-dialog-head"><div><p class="eyebrow"><span></span> PLACE ARCHIVE</p><h2 id="auth-title">로그인</h2></div><button id="auth-close" type="button" class="close-button" aria-label="닫기">×</button></div><form id="auth-form"><label id="nickname-field" hidden>닉네임<input id="auth-nickname" name="nickname" autocomplete="nickname" minlength="2" maxlength="30"></label><label>이메일<input name="email" type="email" autocomplete="email" required maxlength="254"></label><label>비밀번호<input id="auth-password" name="password" type="password" autocomplete="current-password" required minlength="10" maxlength="128"></label><p class="auth-error" id="auth-error" role="alert"></p><button class="auth-submit" type="submit">로그인</button></form><p class="auth-switch-text"><span id="auth-switch-label">아직 계정이 없나요?</span> <button type="button" id="auth-switch">회원가입</button></p></dialog>
-  <dialog id="region-dialog" aria-labelledby="dialog-title"><div class="dialog-head"><div><p class="eyebrow"><span></span> CHOOSE YOUR AREA</p><h2 id="dialog-title">지금 어디에 있나요?</h2><p>현재 지역을 목록에서 직접 선택해 주세요.</p></div><button class="close-button" id="close-picker" type="button" aria-label="지역 선택 닫기">×</button></div><div class="picker-columns"><section><h3><span>01</span> 시·도 선택</h3><div class="picker-list" id="sido-list" aria-label="시도 목록"></div></section><section><h3><span>02</span> 시·군·구 선택</h3><div class="picker-list" id="sigungu-list" aria-label="시군구 목록"><p class="list-placeholder">먼저 시·도를 선택해 주세요.</p></div></section></div><div class="dialog-footer"><span id="picker-selection">지역을 선택해 주세요</span><button id="confirm-region" type="button" disabled>선택 완료 <span aria-hidden="true">→</span></button></div></dialog>
+  <dialog id="region-dialog" aria-labelledby="dialog-title"><div class="dialog-head"><div><h2 id="dialog-title">지금 어디에 있나요?</h2><p>현재 지역을 목록에서 직접 선택해 주세요.</p></div><button class="close-button" id="close-picker" type="button" aria-label="지역 선택 닫기">×</button></div><div class="picker-columns"><section><h3><span>01</span> 시·도 선택</h3><div class="picker-list" id="sido-list" aria-label="시도 목록"></div></section><section><h3><span>02</span> 시·군·구 선택</h3><div class="picker-list" id="sigungu-list" aria-label="시군구 목록"><p class="list-placeholder">먼저 시·도를 선택해 주세요.</p></div></section></div><div class="dialog-footer"><button id="confirm-region" type="button" disabled>선택 완료 <span aria-hidden="true">→</span></button></div></dialog>
 </body>
 </html>
