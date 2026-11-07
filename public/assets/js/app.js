@@ -37,7 +37,17 @@
   $('open-picker').addEventListener('click', openPicker);
   $('change-location').addEventListener('click', openPicker);
   $('close-picker').addEventListener('click', () => dialog.close());
-  confirm.addEventListener('click', () => { if (!district) return; chosen = { sido, district }; safeStore.set(chosen); renderMap(); dialog.close(); $('explore').scrollIntoView({ behavior: 'smooth' }); });
+  confirm.addEventListener('click', () => {
+    if (!district) return;
+    chosen = { sido, district }; safeStore.set(chosen); renderMap(); dialog.close();
+    $('welcome').hidden = true; $('explore').hidden = false;
+    window.scrollTo(0, 0); $('explore-title').setAttribute('tabindex', '-1');
+    $('explore-title').focus({ preventScroll: true });
+  });
+  $('back-home').addEventListener('click', () => {
+    $('explore').hidden = true; $('welcome').hidden = false;
+    window.scrollTo(0, 0); $('open-picker').focus({ preventScroll: true });
+  });
 
   function rings(geometry) { return geometry.type === 'Polygon' ? geometry.coordinates : geometry.coordinates.flat(); }
   function renderMap() {
@@ -81,6 +91,13 @@
   fetch('assets/data/sigungu.geojson').then((response) => { if (!response.ok) throw new Error('data'); return response.json(); }).then((data) => {
     features = data.features.filter((f) => f.properties?.sidonm && f.properties?.sggnm && f.geometry);
     $('open-picker').disabled = false; $('change-location').disabled = false;
+    const names = [...new Set(features.map((f) => cityName(f.properties.sggnm)))];
+    const labels = [...document.querySelectorAll('.floating-regions span')];
+    const randomName = () => names[Math.floor(Math.random() * names.length)];
+    labels.forEach((label) => { label.textContent = randomName(); });
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setInterval(() => { const label = labels[Math.floor(Math.random() * labels.length)]; label.textContent = randomName(); }, 2400);
+    }
     chosen = safeStore.get(); if (chosen) renderMap();
   }).catch(() => { $('map-error').hidden = false; $('map-error').textContent = '지역 데이터를 불러오지 못했어요. 페이지를 새로고침해 주세요.'; $('open-picker').disabled = true; $('change-location').disabled = true; });
 })();

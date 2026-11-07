@@ -6,8 +6,8 @@
   <meta name="description" content="좋아하는 장소와 그 이유를 모으는 나만의 취향 지도">
   <meta name="theme-color" content="#f8f7f1">
   <title>취향지도 — 좋아하는 장소를 모으는 지도</title>
-  <link rel="stylesheet" href="assets/css/styles.css?v=3">
-  <script src="assets/js/app.js?v=4" defer></script>
+  <link rel="stylesheet" href="assets/css/styles.css?v=4">
+  <script src="assets/js/app.js?v=5" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">본문 바로가기</a>
@@ -16,12 +16,11 @@
     <span class="header-index">A PERSONAL ATLAS <span>✳</span> KOREA</span>
   </header>
   <main id="main">
-    <section class="hero wrap">
+    <section class="hero wrap" id="welcome">
       <div class="hero-copy">
         <p class="eyebrow"><span></span> YOUR PLACES, YOUR STORY</p>
-        <h1>좋아하는 곳이<br>모여 <em>내가 되는 지도.</em></h1>
         <p class="hero-description">자주 걷는 동네부터 언젠가 다시 가고 싶은 곳까지.<br>나의 시선으로 장소와 취향을 차곡차곡 기록해요.</p>
-        <button class="location-button" id="open-picker" type="button"><span aria-hidden="true">⌖</span> 지금 내가 있는 곳 지정하기 <span aria-hidden="true">↗</span></button>
+        <div class="location-scene"><div class="floating-regions" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div><button class="location-button" id="open-picker" type="button">지금 어디에 있나요?</button></div>
         <p class="location-note">위치 정보 수집 없이, 지역을 직접 선택해요.</p>
       </div>
       <div class="hero-visual" aria-hidden="true">
@@ -30,11 +29,11 @@
         <div class="atlas-label"><span>THE PLACES<br>WE KEEP.</span><small>작은 장소들이 모여<br>나만의 지도가 됩니다.</small></div>
         <span class="visual-caption">AN ARCHIVE OF LITTLE FAVORITES <span>01 — 17</span></span>
       </div>
-      <div class="hero-bottom"><span>01 / START HERE</span><span>우리 동네에서 시작하는 작은 기록 <span aria-hidden="true">↓</span></span></div>
+      <div class="hero-bottom"><span>01 / START HERE</span><span>우리 동네에서 시작하는 작은 기록</span></div>
     </section>
-    <section class="explore" id="explore" aria-labelledby="explore-title">
+    <section class="explore" id="explore" aria-labelledby="explore-title" hidden>
       <div class="wrap explore-inner">
-        <div class="section-top"><div><p class="eyebrow"><span></span> EXPLORE YOUR NEIGHBORHOOD</p><h2 id="explore-title">우리 동네를 <em>둘러볼까요?</em></h2><p>지역을 선택하면 그곳을 중심으로 취향 지도가 펼쳐져요.</p></div><span class="section-number">02 / EXPLORE</span></div>
+        <button class="back-button" id="back-home" type="button">← 처음으로</button><div class="section-top"><div><p class="eyebrow"><span></span> EXPLORE YOUR NEIGHBORHOOD</p><h2 id="explore-title">우리 동네를 <em>둘러볼까요?</em></h2><p>지역을 선택하면 그곳을 중심으로 취향 지도가 펼쳐져요.</p></div><span class="section-number">02 / EXPLORE</span></div>
         <div class="map-layout">
           <div class="map-card">
             <div class="map-head"><div><span class="map-kicker">MY SELECTED AREA</span><h3 id="selected-title">아직 선택한 지역이 없어요</h3><p id="selected-subtitle">시·도와 시·군·구를 선택해 주세요.</p></div><button class="change-button" id="change-location" type="button">지역 선택 <span aria-hidden="true">↗</span></button></div>

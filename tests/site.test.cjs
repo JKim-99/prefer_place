@@ -7,7 +7,7 @@ const html = readFileSync(resolve(root, 'public/index.html'), 'utf8');
 const geo = JSON.parse(readFileSync(resolve(root, 'public/assets/data/sigungu.geojson'), 'utf8'));
 
 test('homepage provides a manual region picker and a map', () => {
-  for (const expected of ['지금 내가 있는 곳 지정하기', '시·도 선택', '시·군·구 선택', 'region-dialog', 'region-map']) assert.ok(html.includes(expected), `missing: ${expected}`);
+  for (const expected of ['지금 어디에 있나요?', '시·도 선택', '시·군·구 선택', 'region-dialog', 'region-map']) assert.ok(html.includes(expected), `missing: ${expected}`);
   assert.doesNotMatch(html, /navigator\.geolocation/);
 });
 
