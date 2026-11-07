@@ -6,10 +6,10 @@
   <meta name="description" content="좋아하는 장소와 그 이유를 모으는 나만의 취향 지도">
   <meta name="theme-color" content="#f8f7f1">
   <title>취향지도 — 좋아하는 장소를 모으는 지도</title>
-  <link rel="stylesheet" href="assets/css/styles.css?v=12">
-  <script src="assets/js/app.js?v=12" defer></script>
-  <script src="assets/js/auth.js?v=1" defer></script>
-  <script src="assets/js/places.js?v=1" defer></script>
+  <link rel="stylesheet" href="assets/css/styles.css?v=13">
+  <script src="assets/js/app.js?v=13" defer></script>
+  <script src="assets/js/auth.js?v=2" defer></script>
+  <script src="assets/js/places.js?v=2" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">본문 바로가기</a>
@@ -29,16 +29,17 @@
         <div class="map-layout">
           <div class="map-card">
             <div class="map-head"><button class="change-button" id="change-location" type="button">다른 지역 선택하기</button><div class="place-views" role="group" aria-label="장소 보기"><button type="button" class="place-view is-active" data-view="mine" aria-pressed="true">내 장소</button><button type="button" class="place-view" data-view="popular" aria-pressed="false">많이 방문한 장소</button><button type="button" class="place-view" data-view="anonymous" aria-pressed="false">익명유저님의 장소</button></div></div>
-            <div class="map-stage" id="map-stage"><div class="map-empty" id="map-empty"><span>⌖</span><strong>어디에서 시작해 볼까요?</strong><p>지금 있는 지역을 선택하고<br>나만의 지도를 시작해 보세요.</p></div><svg id="region-map" role="img" aria-label="선택한 지역의 행정구역 지도" hidden></svg><fieldset class="place-legend" disabled><legend>장소 종류 · 준비 중</legend><label><input type="checkbox" value="restaurant" checked> 🍴 음식점</label><label><input type="checkbox" value="cafe" checked> ☕ 카페</label><label><input type="checkbox" value="stay" checked> 🛏 숙박</label><label><input type="checkbox" value="other" checked> 📍 기타</label></fieldset><div class="place-search-box"><button id="place-search-open" type="button">⌕ 장소 추가하기</button></div><p class="map-error" id="map-error" role="status" hidden></p></div>
+            <div class="map-stage" id="map-stage"><div class="map-empty" id="map-empty"><span>⌖</span><strong>어디에서 시작해 볼까요?</strong><p>지금 있는 지역을 선택하고<br>나만의 지도를 시작해 보세요.</p></div><svg id="region-map" role="img" aria-label="선택한 지역의 행정구역 지도" hidden></svg><fieldset class="place-legend"><legend>장소 종류</legend><label><input type="checkbox" value="restaurant" checked> 🍴 음식점</label><label><input type="checkbox" value="cafe" checked> ☕ 카페</label><label><input type="checkbox" value="stay" checked> 🛏 숙박</label><label><input type="checkbox" value="other" checked> 📍 기타</label></fieldset><div class="place-search-box"><button id="place-search-open" type="button">⌕ 장소 추가하기</button></div><p class="map-error" id="map-error" role="status" hidden></p></div>
 
           </div>
-          <p id="place-status" class="place-status" role="status">장소 기능을 준비하고 있어요.</p>
+          <div class="place-results"><p id="place-status" class="place-status" role="status">장소를 검색하고 나만의 별칭으로 기록해 보세요.</p><ul id="saved-places" class="saved-places"></ul><p class="place-attribution">실시간 검색 정보 제공: <a href="https://map.kakao.com/" target="_blank" rel="noopener noreferrer">카카오맵</a></p></div>
         </div>
       </div>
     </section>
 
   </main>
 
+  <dialog id="place-dialog" aria-labelledby="place-dialog-title"><div class="auth-dialog-head"><div><h2 id="place-dialog-title">장소 추가하기</h2><p>선택한 지역에서 장소를 검색해 주세요.</p></div><button id="place-dialog-close" type="button" class="close-button" aria-label="닫기">×</button></div><form id="place-search-form"><label for="place-query">장소 이름</label><div class="place-search-row"><input id="place-query" type="search" minlength="2" maxlength="80" required placeholder="장소 이름 입력"><button type="submit">검색</button></div></form><p id="place-search-status" role="status"></p><ul id="place-search-results" class="place-search-results"></ul><p class="place-attribution">검색 정보 제공: <a href="https://map.kakao.com/" target="_blank" rel="noopener noreferrer">카카오맵</a></p></dialog>
   <dialog id="auth-dialog" aria-labelledby="auth-title"><div class="auth-dialog-head"><div><p class="eyebrow"><span></span> PLACE ARCHIVE</p><h2 id="auth-title">로그인</h2></div><button id="auth-close" type="button" class="close-button" aria-label="닫기">×</button></div><form id="auth-form"><label id="nickname-field" hidden>닉네임<input id="auth-nickname" name="nickname" autocomplete="nickname" minlength="2" maxlength="30"></label><label>이메일<input name="email" type="email" autocomplete="email" required maxlength="254"></label><label>비밀번호<input id="auth-password" name="password" type="password" autocomplete="current-password" required minlength="10" maxlength="128"></label><p class="auth-error" id="auth-error" role="alert"></p><button class="auth-submit" type="submit">로그인</button></form><p class="auth-switch-text"><span id="auth-switch-label">아직 계정이 없나요?</span> <button type="button" id="auth-switch">회원가입</button></p></dialog>
   <dialog id="region-dialog" aria-labelledby="dialog-title"><div class="dialog-head"><div><h2 id="dialog-title">지금 어디에 있나요?</h2><p>현재 지역을 목록에서 직접 선택해 주세요.</p></div><button class="close-button" id="close-picker" type="button" aria-label="지역 선택 닫기">×</button></div><div class="picker-columns"><section><h3><span>01</span> 시·도 선택</h3><div class="picker-list" id="sido-list" aria-label="시도 목록"></div></section><section><h3><span>02</span> 시·군·구 선택</h3><div class="picker-list" id="sigungu-list" aria-label="시군구 목록"><p class="list-placeholder">먼저 시·도를 선택해 주세요.</p></div></section></div><div class="dialog-footer"><button id="confirm-region" type="button" disabled>선택 완료 <span aria-hidden="true">→</span></button></div></dialog>
 </body>

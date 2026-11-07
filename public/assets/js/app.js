@@ -106,6 +106,7 @@
     selected.forEach((f) => selectedGroup.append(makePath(f, 'region-selected')));
     svg.append(selectedGroup);
     animateView(targetView);
+    document.dispatchEvent(new CustomEvent('place-region-change', { detail: { ...chosen, shapes: selected } }));
   }
   function animateView(target) {
     if (animationFrame !== null) cancelAnimationFrame(animationFrame);

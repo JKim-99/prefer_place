@@ -15,6 +15,7 @@
   function showUser(user) {
     $('auth-open').hidden = !!user; $('auth-logout').hidden = !user; $('auth-user').hidden = !user;
     $('auth-user').textContent = user ? `${user.nickname}님` : '';
+    document.dispatchEvent(new CustomEvent('place-auth-change', { detail: { signedIn: !!user } }));
   }
   $('auth-open').addEventListener('click', () => { setMode(false); dialog.showModal(); });
   $('auth-close').addEventListener('click', () => dialog.close());

@@ -132,3 +132,9 @@ npm run dev
 ## 행정 경계 데이터 출처
 
 지역 지도에는 [mapcn-kr 시군구 경계 데이터](https://github.com/DevMinGeonPark/mapcn-kr/blob/main/data/sgg.json)를 사용합니다. 원본은 통계청 SGIS 데이터이며 [vuski/admdongkor](https://github.com/vuski/admdongkor)를 거쳐 시군구 단위로 병합·단순화되었습니다. [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) 라이선스이며, 원본 고지는 [LICENSE-DATA](https://github.com/DevMinGeonPark/mapcn-kr/blob/main/LICENSE-DATA)를 참고하세요. 사용 중인 데이터는 2026-07-01 버전으로, 서비스 적용 전 공식 행정구역 기준과 최신성을 검증해야 합니다. 자세한 내용은 [데이터 안내](public/assets/data/README.md)에 있습니다.
+
+## 카카오 장소 검색 설정
+
+카카오디벨로퍼스 앱에서 카카오맵 API를 활성화하고 REST API 키를 발급받습니다. 로컬에서는 프로젝트의 비추적 `.dev.vars` 파일에 `KAKAO_REST_API_KEY=<REST API 키>`를 넣고 `npx wrangler d1 migrations apply prefer-place --local`을 실행한 다음 `npm run dev`로 시작합니다. 운영 환경에서는 Cloudflare Pages의 비밀 변수로 `KAKAO_REST_API_KEY`를 설정하고 D1 마이그레이션을 적용해야 합니다. 키는 저장소나 클라이언트 코드에 넣지 않습니다. 무료 쿼터와 초과 요금은 [카카오 안내](https://developers.kakao.com/docs/ko/getting-started/quota)를 확인하세요.
+
+카카오 검색 결과의 이름·주소·좌표·카테고리는 현재 검색 세션에서만 사용하며 DB에 저장하지 않습니다. 사용자가 직접 작성한 별칭, 카카오 장소 ID, 선택 지역과 공개 여부를 기록합니다. 카카오는 장소 ID 단건 조회 API를 제공하지 않으므로 저장 기록을 다시 볼 때 좌표를 자동 복원할 수 없습니다. 따라서 저장 목록은 별칭과 카카오맵 링크로 표시되며 지도 마커를 다시 보려면 장소를 검색해야 합니다. 인기 목록은 방문 횟수가 아니라 공개 기록을 저장한 서로 다른 사용자 3명 이상을 기준으로 합니다.
