@@ -121,10 +121,14 @@ npm run dev
 4. 공유 컬렉션과 추천 집계의 사용자 동의, 최소 표본, 삭제·탈퇴 시 처리
 ## 수동 지역 선택 화면 (2026-11-07)
 
-메인 화면에서 시·도와 시·군·구를 목록으로 선택하면 해당 시·도의 행정 경계 중 선택한 지역을 강조합니다. 일반구가 있는 도시는 시 단위로 합쳐 표시하며, 선택은 브라우저의 로컬 저장소에 보관합니다. 위치 추적은 사용하지 않습니다. 경계 데이터의 출처와 라이선스는 `public/assets/data/README.md`를 확인하세요. 데이터 기준일과 최신 행정구역 반영 여부는 추가 확인이 필요합니다. 로그인, 장소 기록과 다른 사용자의 공개 지도는 아직 구현되지 않았습니다.
+메인 화면에서 시·도와 시·군·구를 목록으로 선택하면 해당 시·도의 행정 경계 중 선택한 지역을 강조합니다. 일반구가 있는 도시는 시 단위로 합쳐 표시하며, 선택은 브라우저의 로컬 저장소에 보관합니다. 위치 추적은 사용하지 않습니다. 경계 데이터의 출처와 라이선스는 `public/assets/data/README.md`를 확인하세요. 데이터 기준일과 최신 행정구역 반영 여부는 추가 확인이 필요합니다. 장소 기록과 다른 사용자의 공개 지도는 아직 구현되지 않았습니다.
 
 ## 로그인 로컬 실행
 
 회원가입과 로그인은 Cloudflare Pages Functions와 D1이 필요합니다. 정적 파일 서버(예: `python -m http.server`)에서는 인증 API가 실행되지 않습니다. 로컬 환경에서는 `npm ci`, `npx wrangler d1 migrations apply prefer-place --local`, `npm run dev` 순으로 실행한 뒤 `http://127.0.0.1:8788/`에 접속합니다. 로컬 계정과 세션은 로컬 D1에만 저장됩니다.
 
 운영 환경에서 로그인하려면 Cloudflare에 별도의 D1 데이터베이스를 만들고 `wrangler.toml`의 `database_id`를 실제 ID로 바꾼 후, 원격 마이그레이션을 적용하고 Pages Functions와 D1 바인딩을 배포해야 합니다. 현재 저장소에는 실제 데이터베이스 ID가 설정되어 있지 않습니다. 비밀번호 재설정과 이메일 확인은 아직 지원하지 않습니다.
+
+## 행정 경계 데이터 출처
+
+지역 지도에는 [mapcn-kr 시군구 경계 데이터](https://github.com/DevMinGeonPark/mapcn-kr/blob/main/data/sgg.json)를 사용합니다. 원본은 통계청 SGIS 데이터이며 [vuski/admdongkor](https://github.com/vuski/admdongkor)를 거쳐 시군구 단위로 병합·단순화되었습니다. [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) 라이선스이며, 원본 고지는 [LICENSE-DATA](https://github.com/DevMinGeonPark/mapcn-kr/blob/main/LICENSE-DATA)를 참고하세요. 사용 중인 데이터는 2026-07-01 버전으로, 서비스 적용 전 공식 행정구역 기준과 최신성을 검증해야 합니다. 자세한 내용은 [데이터 안내](public/assets/data/README.md)에 있습니다.

@@ -19,7 +19,7 @@
   <main id="main">
     <section class="hero wrap" id="welcome">
       <div class="hero-copy">
-        <div class="location-scene"><svg class="featured-map" id="featured-map" aria-hidden="true"></svg><div class="location-actions"><button class="location-button" id="open-picker" type="button">지금 어디에 있나요?</button><button class="featured-link" id="featured-link" type="button" disabled><span class="featured-dial" id="featured-dial">지역을 불러오는 중</span></button><span class="header-index">A PERSONAL ATLAS <span>✳</span> KOREA</span></div></div>
+        <div class="location-scene"><svg class="featured-map" id="featured-map" aria-hidden="true"></svg><div class="location-actions"><button class="location-button" id="open-picker" type="button">지금 어디에 있나요?</button><button class="featured-link" id="featured-link" type="button" disabled><span class="featured-dial" id="featured-dial">지역을 불러오는 중</span></button></div></div>
       </div>
     </section>
     <section class="explore" id="explore" aria-labelledby="explore-title" hidden>
@@ -37,7 +37,7 @@
     </section>
 
   </main>
-  <footer><div class="wrap footer-inner"><div class="brand"><span class="brand-icon" aria-hidden="true">✳</span><span>취향지도<small>PLACE ARCHIVE</small></span></div><small>© PLACE ARCHIVE · <a href="https://github.com/DevMinGeonPark/mapcn-kr" target="_blank" rel="noopener noreferrer">행정 경계 데이터 출처</a></small></div></footer>
+
   <dialog id="auth-dialog" aria-labelledby="auth-title"><div class="auth-dialog-head"><div><p class="eyebrow"><span></span> PLACE ARCHIVE</p><h2 id="auth-title">로그인</h2></div><button id="auth-close" type="button" class="close-button" aria-label="닫기">×</button></div><form id="auth-form"><label id="nickname-field" hidden>닉네임<input id="auth-nickname" name="nickname" autocomplete="nickname" minlength="2" maxlength="30"></label><label>이메일<input name="email" type="email" autocomplete="email" required maxlength="254"></label><label>비밀번호<input id="auth-password" name="password" type="password" autocomplete="current-password" required minlength="10" maxlength="128"></label><p class="auth-error" id="auth-error" role="alert"></p><button class="auth-submit" type="submit">로그인</button></form><p class="auth-switch-text"><span id="auth-switch-label">아직 계정이 없나요?</span> <button type="button" id="auth-switch">회원가입</button></p></dialog>
   <dialog id="region-dialog" aria-labelledby="dialog-title"><div class="dialog-head"><div><p class="eyebrow"><span></span> CHOOSE YOUR AREA</p><h2 id="dialog-title">지금 어디에 있나요?</h2><p>현재 지역을 목록에서 직접 선택해 주세요.</p></div><button class="close-button" id="close-picker" type="button" aria-label="지역 선택 닫기">×</button></div><div class="picker-columns"><section><h3><span>01</span> 시·도 선택</h3><div class="picker-list" id="sido-list" aria-label="시도 목록"></div></section><section><h3><span>02</span> 시·군·구 선택</h3><div class="picker-list" id="sigungu-list" aria-label="시군구 목록"><p class="list-placeholder">먼저 시·도를 선택해 주세요.</p></div></section></div><div class="dialog-footer"><span id="picker-selection">지역을 선택해 주세요</span><button id="confirm-region" type="button" disabled>선택 완료 <span aria-hidden="true">→</span></button></div></dialog>
 </body>
