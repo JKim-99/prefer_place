@@ -1,0 +1,13 @@
+name = "prefer-place"
+pages_build_output_dir = "public"
+compatibility_date = "2026-10-30"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "prefer-place"
+database_id = "REPLACE_WITH_NEW_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[dev]
+port = 8788
