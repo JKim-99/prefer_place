@@ -65,9 +65,24 @@
     const pad = Math.max(maxX - minX, maxY - minY) * .06;
     const targetView = [minX-pad, minY-pad, maxX-minX+2*pad, maxY-minY+2*pad];
     const pathFor = (f) => rings(f.geometry).map((ring) => ring.map((p, i) => `${i ? 'L' : 'M'}${xy(p).join(' ')}`).join(' ') + ' Z').join(' ');
-    [...features.filter((f) => !selected.includes(f)), ...selected].forEach((f) => {
-      const path = document.createElementNS(NS, 'path'); path.setAttribute('d', pathFor(f)); path.setAttribute('fill-rule', 'evenodd'); path.setAttribute('vector-effect', 'non-scaling-stroke'); path.classList.add(selected.includes(f) ? 'region-selected' : 'region-other'); svg.append(path);
+    const defs = document.createElementNS(NS, 'defs');
+    const gradient = document.createElementNS(NS, 'linearGradient');
+    gradient.id = 'selected-gradient';
+    gradient.setAttribute('x1', '0'); gradient.setAttribute('y1', '0');
+    gradient.setAttribute('x2', '0.8'); gradient.setAttribute('y2', '1');
+    [['0%', '#629575'], ['100%', '#3e7252']].forEach(([offset, color]) => {
+      const stop = document.createElementNS(NS, 'stop');
+      stop.setAttribute('offset', offset); stop.setAttribute('stop-color', color); gradient.append(stop);
     });
+    defs.append(gradient); svg.append(defs);
+    const selectedGroup = document.createElementNS(NS, 'g');
+    selectedGroup.classList.add('region-selected-group');
+    [...features.filter((f) => !selected.includes(f)), ...selected].forEach((f) => {
+      const isSelected = selected.includes(f);
+      const path = document.createElementNS(NS, 'path'); path.setAttribute('d', pathFor(f)); path.setAttribute('fill-rule', 'evenodd'); path.setAttribute('vector-effect', 'non-scaling-stroke'); path.classList.add(isSelected ? 'region-selected' : 'region-other');
+      (isSelected ? selectedGroup : svg).append(path);
+    });
+    svg.append(selectedGroup);
     animateView(targetView);
   }
   function animateView(target) {
