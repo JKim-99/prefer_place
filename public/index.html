@@ -6,8 +6,8 @@
   <meta name="description" content="좋아하는 장소와 그 이유를 모으는 나만의 취향 지도">
   <meta name="theme-color" content="#f8f7f1">
   <title>취향지도 — 좋아하는 장소를 모으는 지도</title>
-  <link rel="stylesheet" href="assets/css/styles.css?v=5">
-  <script src="assets/js/app.js?v=6" defer></script>
+  <link rel="stylesheet" href="assets/css/styles.css?v=6">
+  <script src="assets/js/app.js?v=7" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">본문 바로가기</a>
@@ -32,7 +32,7 @@
           <div class="map-card">
             <div class="map-head"><div><span class="map-kicker">MY SELECTED AREA</span><h3 id="selected-title">아직 선택한 지역이 없어요</h3><p id="selected-subtitle">시·도와 시·군·구를 선택해 주세요.</p></div><button class="change-button" id="change-location" type="button">지역 선택 <span aria-hidden="true">↗</span></button></div>
             <div class="map-stage" id="map-stage"><div class="map-empty" id="map-empty"><span>⌖</span><strong>어디에서 시작해 볼까요?</strong><p>지금 있는 지역을 선택하고<br>나만의 지도를 시작해 보세요.</p></div><svg id="region-map" role="img" aria-label="선택한 지역의 행정구역 지도" hidden></svg><p class="map-error" id="map-error" role="status" hidden></p></div>
-            <div class="map-foot"><div class="legend"><span><i class="legend-selected"></i> 선택한 지역</span><span><i class="legend-other"></i> 주변 지역</span></div><a href="https://github.com/DevMinGeonPark/mapcn-kr" target="_blank" rel="noopener noreferrer">경계 데이터 출처 ↗</a></div>
+
           </div>
 
         </div>
@@ -40,7 +40,7 @@
     </section>
 
   </main>
-  <footer><div class="wrap footer-inner"><div class="brand"><span class="brand-icon" aria-hidden="true">✳</span><span>취향지도<small>PLACE ARCHIVE</small></span></div><p>좋아하는 장소가 쌓여 나를 보여주는 지도.</p><small>© PLACE ARCHIVE</small></div></footer>
+  <footer><div class="wrap footer-inner"><div class="brand"><span class="brand-icon" aria-hidden="true">✳</span><span>취향지도<small>PLACE ARCHIVE</small></span></div><p>좋아하는 장소가 쌓여 나를 보여주는 지도.</p><small>© PLACE ARCHIVE · <a href="https://github.com/DevMinGeonPark/mapcn-kr" target="_blank" rel="noopener noreferrer">행정 경계 데이터 출처</a></small></div></footer>
   <dialog id="region-dialog" aria-labelledby="dialog-title"><div class="dialog-head"><div><p class="eyebrow"><span></span> CHOOSE YOUR AREA</p><h2 id="dialog-title">지금 어디에 있나요?</h2><p>현재 지역을 목록에서 직접 선택해 주세요.</p></div><button class="close-button" id="close-picker" type="button" aria-label="지역 선택 닫기">×</button></div><div class="picker-columns"><section><h3><span>01</span> 시·도 선택</h3><div class="picker-list" id="sido-list" aria-label="시도 목록"></div></section><section><h3><span>02</span> 시·군·구 선택</h3><div class="picker-list" id="sigungu-list" aria-label="시군구 목록"><p class="list-placeholder">먼저 시·도를 선택해 주세요.</p></div></section></div><div class="dialog-footer"><span id="picker-selection">지역을 선택해 주세요</span><button id="confirm-region" type="button" disabled>선택 완료 <span aria-hidden="true">→</span></button></div></dialog>
 </body>
 </html>

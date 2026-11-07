@@ -25,3 +25,4 @@ dialog{background:#f8f7ef;border-radius:4px}.picker-list{background:#fff;border-
 
 /* 메인 화면은 지역 선택에 집중하고, 선택한 경계만 살짝 떠 보이게 합니다. */
 .hero{grid-template-columns:1fr;justify-items:center;text-align:center}.hero-copy{width:min(620px,100%)}.hero-copy>.eyebrow{justify-content:center}.region-selected-group{filter:drop-shadow(0 1px 0 #345e43) drop-shadow(0 2px 0 #345e43) drop-shadow(0 3px 0 #345e43) drop-shadow(0 5px 4px rgba(35,65,45,.25))}.region-selected{fill:url(#selected-gradient);filter:none;stroke:#dcebd9;stroke-width:1.2}
+.region-selected-group{filter:drop-shadow(0 4px 4px rgba(35,65,45,.2))}.region-side{fill:#325a41;stroke:#325a41;stroke-width:1;stroke-linejoin:round}.footer-inner>small a{text-decoration:underline}

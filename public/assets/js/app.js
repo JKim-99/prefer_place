@@ -62,7 +62,7 @@
     const xy = ([x, y]) => [x * Math.cos(36.5 * Math.PI / 180), -y];
     const points = allPoints.map(xy); const xs = points.map((p) => p[0]), ys = points.map((p) => p[1]);
     const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
-    const pad = Math.max(maxX - minX, maxY - minY) * .06;
+    const pad = Math.max(maxX - minX, maxY - minY) * .1;
     const targetView = [minX-pad, minY-pad, maxX-minX+2*pad, maxY-minY+2*pad];
     const pathFor = (f) => rings(f.geometry).map((ring) => ring.map((p, i) => `${i ? 'L' : 'M'}${xy(p).join(' ')}`).join(' ') + ' Z').join(' ');
     const defs = document.createElementNS(NS, 'defs');
@@ -77,11 +77,25 @@
     defs.append(gradient); svg.append(defs);
     const selectedGroup = document.createElementNS(NS, 'g');
     selectedGroup.classList.add('region-selected-group');
-    [...features.filter((f) => !selected.includes(f)), ...selected].forEach((f) => {
-      const isSelected = selected.includes(f);
-      const path = document.createElementNS(NS, 'path'); path.setAttribute('d', pathFor(f)); path.setAttribute('fill-rule', 'evenodd'); path.setAttribute('vector-effect', 'non-scaling-stroke'); path.classList.add(isSelected ? 'region-selected' : 'region-other');
-      (isSelected ? selectedGroup : svg).append(path);
-    });
+    const makePath = (f, className) => {
+      const path = document.createElementNS(NS, 'path'); path.setAttribute('d', pathFor(f)); path.setAttribute('fill-rule', 'evenodd'); path.setAttribute('vector-effect', 'non-scaling-stroke');
+      path.setAttribute('class', className);
+      return path;
+    };
+    features.filter((f) => !selected.includes(f)).forEach((f) => svg.append(makePath(f, 'region-other')));
+    // Draw the offset silhouettes under the surface to create a shallow visible edge.
+    const depth = Math.max(maxX - minX, maxY - minY) * .025;
+    const base = document.createElementNS(NS, 'g');
+    base.classList.add('region-depth');
+    for (let layer = 6; layer >= 1; layer--) {
+      selected.forEach((f) => {
+        const path = makePath(f, 'region-side');
+        path.setAttribute('transform', `translate(0 ${depth * layer / 6})`);
+        base.append(path);
+      });
+    }
+    svg.append(base);
+    selected.forEach((f) => selectedGroup.append(makePath(f, 'region-selected')));
     svg.append(selectedGroup);
     animateView(targetView);
   }
