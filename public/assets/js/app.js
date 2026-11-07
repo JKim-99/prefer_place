@@ -52,7 +52,7 @@
     const xy = ([x, y]) => [x * Math.cos(36.5 * Math.PI / 180), -y];
     const points = allPoints.map(xy); const xs = points.map((p) => p[0]), ys = points.map((p) => p[1]);
     const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
-    const pad = Math.max(maxX - minX, maxY - minY) * .35;
+    const pad = Math.max(maxX - minX, maxY - minY) * .06;
     const targetView = [minX-pad, minY-pad, maxX-minX+2*pad, maxY-minY+2*pad];
     const pathFor = (f) => rings(f.geometry).map((ring) => ring.map((p, i) => `${i ? 'L' : 'M'}${xy(p).join(' ')}`).join(' ') + ' Z').join(' ');
     [...features.filter((f) => !selected.includes(f)), ...selected].forEach((f) => {
