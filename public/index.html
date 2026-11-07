@@ -6,8 +6,8 @@
   <meta name="description" content="좋아하는 장소와 그 이유를 모으는 나만의 취향 지도">
   <meta name="theme-color" content="#f8f7f1">
   <title>취향지도 — 좋아하는 장소를 모으는 지도</title>
-  <link rel="stylesheet" href="assets/css/styles.css?v=7">
-  <script src="assets/js/app.js?v=8" defer></script>
+  <link rel="stylesheet" href="assets/css/styles.css?v=8">
+  <script src="assets/js/app.js?v=9" defer></script>
   <script src="assets/js/auth.js?v=1" defer></script>
 </head>
 <body>
@@ -19,7 +19,7 @@
   <main id="main">
     <section class="hero wrap" id="welcome">
       <div class="hero-copy">
-        <div class="location-scene"><div class="floating-regions" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div><button class="location-button" id="open-picker" type="button">지금 어디에 있나요?</button></div>
+        <div class="location-scene"><svg class="featured-map" id="featured-map" aria-hidden="true"></svg><button class="location-button" id="open-picker" type="button">지금 어디에 있나요?</button></div><button class="featured-link" id="featured-link" type="button" disabled><span class="featured-dial" id="featured-dial">지역을 불러오는 중</span></button>
       </div>
     </section>
     <section class="explore" id="explore" aria-labelledby="explore-title" hidden>

@@ -8,7 +8,7 @@
   const svg = $('region-map');
   const NS = 'http://www.w3.org/2000/svg';
   let features = [], sido = '', district = '', chosen = null;
-  let currentView = null, animationFrame = null;
+  let currentView = null, animationFrame = null, featured = null, pressedFeature = null;
   $('open-picker').disabled = true; $('change-location').disabled = true;
 
   // 일반구가 있는 시는 시 단위로 선택하고 모든 구를 함께 표시합니다.
@@ -37,12 +37,21 @@
   $('open-picker').addEventListener('click', openPicker);
   $('change-location').addEventListener('click', openPicker);
   $('close-picker').addEventListener('click', () => dialog.close());
-  confirm.addEventListener('click', () => {
-    if (!district) return;
-    chosen = { sido, district }; safeStore.set(chosen); renderMap(); dialog.close();
+  function showRegion(region) {
+    chosen = region; safeStore.set(chosen); renderMap();
     $('welcome').hidden = true; $('explore').hidden = false;
     window.scrollTo(0, 0); $('explore-title').setAttribute('tabindex', '-1');
     $('explore-title').focus({ preventScroll: true });
+  }
+  confirm.addEventListener('click', () => {
+    if (!district) return;
+    dialog.close(); showRegion({ sido, district });
+  });
+  $('featured-link').addEventListener('pointerdown', () => { pressedFeature = featured; });
+  $('featured-link').addEventListener('pointercancel', () => { pressedFeature = null; });
+  $('featured-link').addEventListener('click', () => {
+    const target = pressedFeature || featured; pressedFeature = null;
+    if (target) showRegion(target);
   });
   $('back-home').addEventListener('click', () => {
     $('explore').hidden = true; $('welcome').hidden = false;
@@ -120,13 +129,41 @@
   fetch('assets/data/sigungu.geojson').then((response) => { if (!response.ok) throw new Error('data'); return response.json(); }).then((data) => {
     features = data.features.filter((f) => f.properties?.sidonm && f.properties?.sggnm && f.geometry);
     $('open-picker').disabled = false; $('change-location').disabled = false;
-    const names = [...new Set(features.map((f) => cityName(f.properties.sggnm)))];
-    const labels = [...document.querySelectorAll('.floating-regions span')];
-    const randomName = () => names[Math.floor(Math.random() * names.length)];
-    labels.forEach((label) => { label.textContent = randomName(); });
-    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setInterval(() => { const label = labels[Math.floor(Math.random() * labels.length)]; label.textContent = randomName(); }, 2400);
+    const regionMap = new Map();
+    features.forEach((f) => {
+      const region = { sido: f.properties.sidonm, district: cityName(f.properties.sggnm) };
+      const key = `${region.sido}|${region.district}`;
+      if (!regionMap.has(key)) regionMap.set(key, { region, shapes: [] });
+      regionMap.get(key).shapes.push(f);
+    });
+    const options = [...regionMap.values()];
+    let previous = -1;
+    function changeFeatured() {
+      if (options.length === 0) return;
+      let index = Math.floor(Math.random() * options.length);
+      if (options.length > 1 && index === previous) index = (index + 1) % options.length;
+      previous = index;
+      const { region, shapes } = options[index]; featured = region;
+      const map = $('featured-map'); map.replaceChildren();
+      const xy = ([x, y]) => [x * Math.cos(36.5 * Math.PI / 180), -y];
+      const coordinates = shapes.flatMap((f) => rings(f.geometry).flat()).map(xy);
+      const xs = coordinates.map((point) => point[0]), ys = coordinates.map((point) => point[1]);
+      const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+      const padding = Math.max(maxX - minX, maxY - minY) * .08;
+      map.setAttribute('viewBox', `${minX-padding} ${minY-padding} ${maxX-minX+2*padding} ${maxY-minY+2*padding}`);
+      shapes.forEach((shape) => {
+        const path = document.createElementNS(NS, 'path');
+        path.setAttribute('d', rings(shape.geometry).map((ring) => ring.map((point, i) => `${i ? 'L' : 'M'}${xy(point).join(' ')}`).join(' ') + ' Z').join(' '));
+        path.setAttribute('fill-rule', 'evenodd'); map.append(path);
+      });
+      const label = document.createElement('span'); label.className = 'featured-dial-item';
+      const province = document.createElement('strong'); province.textContent = region.sido;
+      const place = document.createElement('strong'); place.textContent = region.district;
+      label.append(province, document.createTextNode(' '), place, document.createTextNode(' 둘러보기'));
+      $('featured-dial').replaceChildren(label); $('featured-link').disabled = false;
     }
+    changeFeatured();
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) setInterval(changeFeatured, 1000);
     chosen = safeStore.get(); if (chosen) renderMap();
   }).catch(() => { $('map-error').hidden = false; $('map-error').textContent = '지역 데이터를 불러오지 못했어요. 페이지를 새로고침해 주세요.'; $('open-picker').disabled = true; $('change-location').disabled = true; });
 })();
