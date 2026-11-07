@@ -6,24 +6,21 @@
   <meta name="description" content="좋아하는 장소와 그 이유를 모으는 나만의 취향 지도">
   <meta name="theme-color" content="#f8f7f1">
   <title>취향지도 — 좋아하는 장소를 모으는 지도</title>
-  <link rel="stylesheet" href="assets/css/styles.css?v=6">
-  <script src="assets/js/app.js?v=7" defer></script>
+  <link rel="stylesheet" href="assets/css/styles.css?v=7">
+  <script src="assets/js/app.js?v=8" defer></script>
+  <script src="assets/js/auth.js?v=1" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">본문 바로가기</a>
   <header class="site-header">
     <a class="brand" href="index.html"><span class="brand-icon" aria-hidden="true">✳</span><span>취향지도<small>PLACE ARCHIVE</small></span></a>
-    <span class="header-index">A PERSONAL ATLAS <span>✳</span> KOREA</span>
+    <div class="auth-header"><span id="auth-user" hidden></span><button id="auth-open" class="auth-header-button" type="button">로그인</button><button id="auth-logout" class="auth-header-button" type="button" hidden>로그아웃</button></div>
   </header>
   <main id="main">
     <section class="hero wrap" id="welcome">
       <div class="hero-copy">
-        <p class="eyebrow"><span></span> YOUR PLACES, YOUR STORY</p>
-        <p class="hero-description">자주 걷는 동네부터 언젠가 다시 가고 싶은 곳까지.<br>나의 시선으로 장소와 취향을 차곡차곡 기록해요.</p>
         <div class="location-scene"><div class="floating-regions" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div><button class="location-button" id="open-picker" type="button">지금 어디에 있나요?</button></div>
-        <p class="location-note">위치 정보 수집 없이, 지역을 직접 선택해요.</p>
       </div>
-      <div class="hero-bottom"><span>01 / START HERE</span><span>우리 동네에서 시작하는 작은 기록</span></div>
     </section>
     <section class="explore" id="explore" aria-labelledby="explore-title" hidden>
       <div class="wrap explore-inner">
@@ -40,7 +37,8 @@
     </section>
 
   </main>
-  <footer><div class="wrap footer-inner"><div class="brand"><span class="brand-icon" aria-hidden="true">✳</span><span>취향지도<small>PLACE ARCHIVE</small></span></div><p>좋아하는 장소가 쌓여 나를 보여주는 지도.</p><small>© PLACE ARCHIVE · <a href="https://github.com/DevMinGeonPark/mapcn-kr" target="_blank" rel="noopener noreferrer">행정 경계 데이터 출처</a></small></div></footer>
+  <footer><div class="wrap footer-inner"><div class="brand"><span class="brand-icon" aria-hidden="true">✳</span><span>취향지도<small>PLACE ARCHIVE</small></span></div><small>© PLACE ARCHIVE · <a href="https://github.com/DevMinGeonPark/mapcn-kr" target="_blank" rel="noopener noreferrer">행정 경계 데이터 출처</a></small></div></footer>
+  <dialog id="auth-dialog" aria-labelledby="auth-title"><div class="auth-dialog-head"><div><p class="eyebrow"><span></span> PLACE ARCHIVE</p><h2 id="auth-title">로그인</h2></div><button id="auth-close" type="button" class="close-button" aria-label="닫기">×</button></div><form id="auth-form"><label id="nickname-field" hidden>닉네임<input id="auth-nickname" name="nickname" autocomplete="nickname" minlength="2" maxlength="30"></label><label>이메일<input name="email" type="email" autocomplete="email" required maxlength="254"></label><label>비밀번호<input id="auth-password" name="password" type="password" autocomplete="current-password" required minlength="10" maxlength="128"></label><p class="auth-error" id="auth-error" role="alert"></p><button class="auth-submit" type="submit">로그인</button></form><p class="auth-switch-text"><span id="auth-switch-label">아직 계정이 없나요?</span> <button type="button" id="auth-switch">회원가입</button></p></dialog>
   <dialog id="region-dialog" aria-labelledby="dialog-title"><div class="dialog-head"><div><p class="eyebrow"><span></span> CHOOSE YOUR AREA</p><h2 id="dialog-title">지금 어디에 있나요?</h2><p>현재 지역을 목록에서 직접 선택해 주세요.</p></div><button class="close-button" id="close-picker" type="button" aria-label="지역 선택 닫기">×</button></div><div class="picker-columns"><section><h3><span>01</span> 시·도 선택</h3><div class="picker-list" id="sido-list" aria-label="시도 목록"></div></section><section><h3><span>02</span> 시·군·구 선택</h3><div class="picker-list" id="sigungu-list" aria-label="시군구 목록"><p class="list-placeholder">먼저 시·도를 선택해 주세요.</p></div></section></div><div class="dialog-footer"><span id="picker-selection">지역을 선택해 주세요</span><button id="confirm-region" type="button" disabled>선택 완료 <span aria-hidden="true">→</span></button></div></dialog>
 </body>
 </html>
