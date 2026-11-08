@@ -133,19 +133,21 @@ npm run dev
 
 지역 지도에는 [mapcn-kr 시군구 경계 데이터](https://github.com/DevMinGeonPark/mapcn-kr/blob/main/data/sgg.json)를 사용합니다. 원본은 통계청 SGIS 데이터이며 [vuski/admdongkor](https://github.com/vuski/admdongkor)를 거쳐 시군구 단위로 병합·단순화되었습니다. [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) 라이선스이며, 원본 고지는 [LICENSE-DATA](https://github.com/DevMinGeonPark/mapcn-kr/blob/main/LICENSE-DATA)를 참고하세요. 사용 중인 데이터는 2026-07-01 버전으로, 서비스 적용 전 공식 행정구역 기준과 최신성을 검증해야 합니다. 자세한 내용은 [데이터 안내](public/assets/data/README.md)에 있습니다.
 
-## 공공 장소 데이터 검색
+## 공공 장소 데이터와 자동 갱신
 
-장소 검색에는 [소상공인시장진흥공단 상가(상권)정보 파일](https://www.data.go.kr/data/15083033/fileData.do)을 사용합니다. 제공처가 표시한 이용허락 범위와 기준일을 확인하고 ZIP 원본을 다운로드합니다. 카카오 API 키는 더 이상 장소 검색에 사용하지 않습니다. 사용 중인 로컬 DB에는 2026-09-30 기준 자료가 적재되어 있습니다. 새 로컬 환경에서는 마이그레이션을 적용한 후 아래 명령으로 해당 환경의 D1 로컬 SQLite를 지정해 가져옵니다.
+[소상공인시장진흥공단 상가정보 API](https://www.data.go.kr/data/15012005/openapi.do)의 지역별 자료를 서버 검색 인덱스에 유지합니다. 상호 부분 검색과 자동완성을 위해 검색용 DB는 필요하지만 사용자가 파일을 주기적으로 내려받을 필요는 없습니다. 카카오 장소 API는 사용하지 않습니다. 기존 카카오 기록은 삭제하지 않으며 좌표가 없어 카카오맵 링크로만 볼 수 있습니다. 인기 장소는 실제 방문이 아닌 공개 저장 사용자 3명 이상 기준입니다.
 
-```sh
-npx wrangler d1 migrations apply prefer-place --local
-python3 scripts/import_public_places.py --zip /path/to/official-data.zip --db /path/to/.wrangler/state/v3/d1/miniflare-D1DatabaseObject/database.sqlite --version 20260930
-npm run dev
-```
+로컬에서는 `npx wrangler d1 migrations apply prefer-place --local`을 실행하고 `.dev.vars`에 `PUBLIC_DATA_API_KEY=일반_인증키(Decoding)`을 설정합니다. `npm run dev`로 사이트를 시작한 다음 별도 터미널에서 `npm run sync:local`을 실행하면 이 작업이 유지되는 동안 자동 갱신합니다. 로컬 작업을 종료하거나 컴퓨터를 재시작하면 다시 실행해야 합니다. 로그는 비추적 `.wrangler/catalog-sync.log`에 기록됩니다. 키는 채팅·GitHub·로그에 넣지 않습니다.
 
-파일 이름의 데이터 기준일을 `--version`에 입력합니다. D1 SQLite 파일명은 로컬 환경마다 다르며 `metadata.sqlite`가 아닌 파일을 지정해야 합니다. 원본 ZIP, 데이터베이스 및 비밀값은 저장소에 추가하지 않습니다. 데이터는 분기별로 갱신되며 적재에 시간과 디스크 공간이 필요합니다. 이전 버전에만 있던 저장 장소는 사용자 기록을 보존하도록 남기되 최신 데이터 검색에서는 제외합니다. 일부 업소가 누락되거나 이전·폐업 정보가 늦게 반영될 수 있습니다. 한 건물에 여러 장소가 있는 경우에도 제공된 좌표의 정확도는 원본에 따릅니다.
+서버는 API 기준월을 하루 한 번 확인하고 기준월이 바뀌면 5분마다 1,000건 이하의 한 페이지를 적재합니다. 지역에 속한 모든 페이지와 중복·총 건수를 확인한 뒤에만 빠진 업소를 검색에서 제외하며, 저장 기록은 삭제하지 않습니다. 좌표가 없는 응답은 새 마커를 만들지 않고 기존 기록은 보존합니다. 오류·한도 초과 시 이전 페이지부터 다시 시도합니다. API에서 빈 DB를 처음 채우는 경우 전국을 순차 적재하므로 시간이 걸리며 그동안 일부 지역만 검색될 수 있습니다. 데이터 갱신 속도는 제공기관의 기준월을 따르며 실시간 개업·폐업을 보장하지 않습니다.
 
-운영 환경은 아직 별도 D1을 연결하지 않았으며, 로컬에서만 쓰이는 위 SQLite 적재 스크립트가 원격 D1에 데이터를 자동으로 업로드하지 않습니다. 운영 배포 전 원격 대용량 적재·갱신과 비용을 별도로 구성하고 검증해야 합니다. 기존 카카오 기록은 삭제하지 않지만 좌표가 없어 카카오맵 링크로만 볼 수 있습니다. 인기 장소는 실제 방문이 아닌 공개 저장 사용자 3명 이상 기준입니다.
+공식 [상가정보 CSV](https://www.data.go.kr/data/15083033/fileData.do)로 초기 데이터를 빠르게 채울 수도 있습니다. 실행 중인 로컬 자동 갱신을 중지하고 마이그레이션 후 `python3 scripts/import_public_places.py --zip /path/to/data.zip --db /path/to/local-d1.sqlite --version 20260930`을 실행합니다. SQLite 파일은 `.wrangler/state/v3/d1/miniflare-D1DatabaseObject/` 안의 `metadata.sqlite`가 아닌 파일입니다. 원본 ZIP, 데이터베이스 및 비밀값은 저장소에 추가하지 않습니다.
+
+### 운영 자동 갱신 설정
+
+운영 사이트는 아직 배포되지 않았습니다. 운영 D1을 만들고 `wrangler.toml`과 `wrangler.sync.toml`에 같은 실제 D1 ID를 설정한 다음 원격 마이그레이션을 적용합니다. 별도의 동기화 Worker에 `npx wrangler secret put PUBLIC_DATA_API_KEY --config wrangler.sync.toml`로 비밀을 설정하고 `npx wrangler deploy --config wrangler.sync.toml`로 배포해야 예약 실행이 시작됩니다. 이 명령들은 현재 자동으로 실행되지 않았습니다.
+
+전국 약 275만 건을 1,000건씩 5분마다 처리하면 최소 약 10일이 걸립니다. 인덱스와 검증 기록도 D1 읽기·쓰기 사용량에 포함되므로 [Cloudflare D1의 요금과 일일 한도](https://developers.cloudflare.com/d1/platform/pricing/)를 확인하고 운영 배포 전 충분한 용량과 예산을 확보해야 합니다. 무료 한도를 초과하면 해당 계정의 다른 DB 요청에도 영향을 줄 수 있습니다. 로컬에서의 처리 시간과 운영 무료 한도는 다릅니다.
 
 ### 계정과 마이페이지
 

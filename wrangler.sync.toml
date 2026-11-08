@@ -1,0 +1,14 @@
+name = "prefer-place-catalog-sync"
+main = "workers/catalog-sync.js"
+compatibility_date = "2026-10-30"
+
+# Configure the same database ID as the Pages application before deployment.
+[[d1_databases]]
+binding = "DB"
+database_name = "prefer-place"
+database_id = "REPLACE_WITH_NEW_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+# One API page per run; retries resume at the same page after errors.
+[triggers]
+crons = ["*/5 * * * *"]

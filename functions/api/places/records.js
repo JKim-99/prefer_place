@@ -1,7 +1,7 @@
 import { json, readBody, sameOrigin } from '../../../lib/server/auth.js';
 import { currentUser } from '../../../lib/server/place-auth.js';
 const validId = id => /^(?:\d{1,30}|biz:[A-Za-z0-9]{1,40})$/.test(id || '');
-const columns = `r.place_id, r.alias, r.is_public, r.region_sido, r.region_district, CASE WHEN p.id IS NULL THEN 'other' ELSE p.category END AS category, p.name, p.address, p.category_name, p.longitude, p.latitude, p.data_version`;
+const columns = `r.place_id, r.alias, r.is_public, r.region_sido, r.region_district, CASE WHEN p.id IS NULL THEN 'other' ELSE p.category END AS category, p.name, p.address, p.category_name, p.longitude, p.latitude, COALESCE(p.source_version, p.data_version) AS data_version`;
 const join = ' FROM place_records r LEFT JOIN public_places p ON p.id = r.place_id ';
 export async function onRequestGet({ request, env }) {
   if (!env.DB) return json({ error: '데이터베이스가 설정되지 않았습니다.' }, 503);
@@ -14,7 +14,7 @@ export async function onRequestGet({ request, env }) {
   }
   if (!sido || !district || sido.length > 40 || district.length > 40) return json({ error: '지역을 확인해 주세요.' }, 400);
   if (mode === 'popular') {
-    const result = await env.DB.prepare(`SELECT p.id AS place_id, p.name, p.address, p.category, p.category_name, p.longitude, p.latitude, p.data_version, COUNT(DISTINCT r.user_id) AS count FROM place_records r JOIN public_places p ON p.id = r.place_id WHERE r.region_sido = ? AND r.region_district = ? AND r.is_public = 1 GROUP BY r.place_id HAVING COUNT(DISTINCT r.user_id) >= 3 ORDER BY count DESC LIMIT 100`).bind(sido, district).all();
+    const result = await env.DB.prepare(`SELECT p.id AS place_id, p.name, p.address, p.category, p.category_name, p.longitude, p.latitude, COALESCE(p.source_version, p.data_version) AS data_version, COUNT(DISTINCT r.user_id) AS count FROM place_records r JOIN public_places p ON p.id = r.place_id WHERE r.region_sido = ? AND r.region_district = ? AND r.is_public = 1 GROUP BY r.place_id HAVING COUNT(DISTINCT r.user_id) >= 3 ORDER BY count DESC LIMIT 100`).bind(sido, district).all();
     return json({ records: result.results });
   }
   if (mode === 'anonymous') {

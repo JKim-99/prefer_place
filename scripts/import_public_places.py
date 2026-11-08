@@ -66,10 +66,10 @@ def main():
     args = parser.parse_args()
     db = sqlite3.connect(args.db, timeout=60)
     # Upsert; do not remove records from older releases: users' saved places keep working.
-    sql = '''INSERT INTO public_places (id,name,address,category,category_name,region_sido,region_district,longitude,latitude,data_version) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,address=excluded.address,category=excluded.category,category_name=excluded.category_name,region_sido=excluded.region_sido,region_district=excluded.region_district,longitude=excluded.longitude,latitude=excluded.latitude,data_version=excluded.data_version'''
+    sql = '''INSERT INTO public_places (id,name,address,category,category_name,region_sido,region_district,longitude,latitude,data_version,source_version,is_active) VALUES (?,?,?,?,?,?,?,?,?,?,?,1) ON CONFLICT(id) DO UPDATE SET name=excluded.name,address=excluded.address,category=excluded.category,category_name=excluded.category_name,region_sido=excluded.region_sido,region_district=excluded.region_district,longitude=excluded.longitude,latitude=excluded.latitude,data_version=excluded.data_version,source_version=excluded.source_version,is_active=1'''
     count, batch = 0, []
     for row in rows(args.zip, args.version):
-        batch.append(row)
+        batch.append((*row, args.version[:6]))
         if len(batch) >= 5000:
             db.executemany(sql, batch); db.commit(); count += len(batch); batch.clear()
     if batch:
@@ -77,6 +77,8 @@ def main():
     if not count:
         raise ValueError('적재할 장소가 없습니다. 기존 검색 기준일은 변경하지 않았습니다.')
     db.execute('INSERT INTO public_catalog_meta (id,data_version,imported_at) VALUES (1,?,?) ON CONFLICT(id) DO UPDATE SET data_version=excluded.data_version, imported_at=excluded.imported_at', (args.version, int(time.time())))
+    db.execute('DELETE FROM catalog_sync_seen')
+    db.execute("INSERT INTO catalog_sync_state (id,status,completed_version) VALUES (1,'idle',?) ON CONFLICT(id) DO UPDATE SET status='idle',completed_version=excluded.completed_version,source_version=NULL,run_token=NULL,region_index=0,code_index=0,page_number=1,expected_code_total=NULL,group_expected_total=0,last_checked_at=NULL", (args.version[:6],))
     db.commit()
     print(f'{count:,}개 장소 반영 완료')
     db.close()
