@@ -13,7 +13,7 @@ test('homepage provides a manual region picker and a map', () => {
 
 test('map detail styling follows the homepage palette without removing map controls', () => {
   const css = readFileSync(resolve(__dirname, '../public/assets/css/styles.css'), 'utf8');
-  for (const expected of ['#region-map .region-other', '#region-map .region-side', '#region-map .region-selected', '#region-map .neighborhood-border', '#region-map #neighborhood-labels text', '#region-map .place-marker-position{pointer-events:none}', '#region-map .place-marker{pointer-events:none}', '#region-map .place-marker-hit{pointer-events:all']) {
+  for (const expected of ['#region-map .region-other', '#region-map .region-side', '#region-map .region-selected', '#region-map .neighborhood-border', '#region-map #neighborhood-labels text', '#region-map .place-marker-position{pointer-events:none}', '#region-map .place-marker{pointer-events:none}', '#region-map .place-marker-hit{pointer-events:visible']) {
     assert.ok(css.includes(expected), `missing map surface style: ${expected}`);
   }
   for (const expected of ['id="zoom-in"', 'id="zoom-out"', 'id="zoom-reset"', 'id="region-map"']) assert.ok(html.includes(expected), `missing existing map control: ${expected}`);
@@ -22,8 +22,22 @@ test('map detail styling follows the homepage palette without removing map contr
   assert.match(app, /svg\.addEventListener\('pointerdown'/);
   assert.match(app, /id = 'neighborhood-borders'/);
   assert.match(app, /for \(let layer = 1; layer >= 1; layer--\)/);
+  assert.match(app, /path\.setAttribute\('stroke-linejoin', 'round'\)/);
+  assert.match(css, /#region-map #region-overview-selected path\.region-selected\{stroke-width:2px!important\}/);
   const places = readFileSync(resolve(__dirname, '../public/assets/js/places.js'), 'utf8');
   assert.match(places, /position\.setAttribute\('class', 'place-marker-position'\)/);
+  assert.match(places, /hit\.append\(hitArea, text\); marker\.append\(hit\)/);
+});
+
+test('mypage is a dedicated route and the account control navigates to it', () => {
+  const mypage = readFileSync(resolve(root, 'public/mypage.html'), 'utf8');
+  assert.match(html, /id="auth-user"[^>]*href="\/mypage\.html"/);
+  assert.match(html, /id="profile-page" hidden/);
+  assert.match(html, /id="profile-page" hidden/);
+  assert.doesNotMatch(html, /<dialog id="mypage-dialog"/);
+  assert.match(mypage, /id="profile-page"/);
+  assert.match(mypage, /id="mypage-dialog" class="mypage-dialog"/);
+  assert.match(mypage, /href="\/"[^>]*>지도 돌아가기/);
 });
 
 test('boundary data covers the source dataset and the requested examples', () => {

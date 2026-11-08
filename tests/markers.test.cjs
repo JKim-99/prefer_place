@@ -10,7 +10,8 @@ test('adding a search result positions its marker independently of hover styling
     addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); }
     dispatch(type, extra = {}) { for (const fn of this.listeners[type] || []) fn({ target: this, currentTarget: this, preventDefault() {}, ...extra }); }
     click() { this.dispatch('click'); }
-    append(...children) { this.children.push(...children); }
+    append(...children) { children.forEach(child => { child.parent = this; }); this.children.push(...children); }
+    contains(node) { return this === node || this.children.some(child => child.contains?.(node)); }
     replaceChildren(...children) { this.children = children; }
     remove() { if (this.parent) this.parent.children = this.parent.children.filter(item => item !== this); }
     setAttribute(key, value) { this.attrs[key] = String(value); }
@@ -23,6 +24,7 @@ test('adding a search result positions its marker independently of hover styling
   const ids = new Map();
   const get = id => { if (!ids.has(id)) ids.set(id, new Element()); return ids.get(id); };
   const svg = get('region-map'); svg.viewBox = { baseVal: { width: 1, height: 1 } };
+  svg.querySelector = selector => selector === '#place-markers' ? svg.children.find(child => child.id === 'place-markers') : null;
   const legend = new Element(); legend.querySelectorAll = () => ['restaurant','cafe','stay','other'].map(value => ({ value }));
   const view = new Element(); view.dataset.view = 'mine';
   const listeners = {};
@@ -47,11 +49,16 @@ test('adding a search result positions its marker independently of hover styling
   const result = get('place-search-results').children[0]; assert.ok(result);
   result.children[2].dispatch('submit'); await new Promise(resolve => setImmediate(resolve));
   const markerLayer = svg.children.find(child => child.id === 'place-markers'); assert.ok(markerLayer);
-  const position = markerLayer.children[0], marker = position.children[0], hit = marker.children[0], icon = marker.children[1];
+  const position = markerLayer.children[0], marker = position.children[0], hit = marker.children[0], hitArea = hit.children[0], icon = hit.children[1];
   assert.match(position.attrs.transform, /^translate\(/); assert.equal(position.attrs.class, 'place-marker-position'); assert.equal(marker.attrs.class, 'place-marker');
-  assert.equal(hit.tag, 'circle'); assert.equal(hit.attrs.class, 'place-marker-hit'); assert.equal(hit.attrs.role, 'button');
-  assert.ok(Number(hit.attrs.r) > 0 && Number(hit.attrs.r) < Number(icon.attrs['font-size']));
+  assert.equal(hit.tag, 'g'); assert.equal(hit.attrs.class, 'place-marker-hit'); assert.equal(hit.attrs.role, 'button');
+  assert.equal(hitArea.tag, 'circle'); assert.equal(hitArea.attrs.class, 'place-marker-hit-area');
+  assert.ok(Number(hitArea.attrs.r) > 0 && Number(hitArea.attrs.r) < Number(icon.attrs['font-size']));
   assert.equal(icon.attrs.class, 'marker-icon'); assert.equal(icon.attrs['pointer-events'], 'none');
-  assert.equal(marker.attrs.role, undefined); assert.equal(marker.attrs.tabindex, undefined); assert.equal(hit.attrs.fill, 'transparent');
+  assert.equal(marker.attrs.role, undefined); assert.equal(marker.attrs.tabindex, undefined); assert.equal(hitArea.attrs.fill, '#000');
+  assert.equal(hit.contains(icon), true);
+  hit.dispatch('pointerleave', { relatedTarget: icon });
+  // Moving from the transparent hit shape onto its icon stays within one button group.
+  assert.equal(hit.contains(icon), true);
   assert.equal(marker.attrs.transform, undefined); assert.equal(position.attrs['pointer-events'], undefined);
 });

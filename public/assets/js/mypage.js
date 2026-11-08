@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  const $ = id => document.getElementById(id), dialog = $('mypage-dialog');
+  const $ = id => document.getElementById(id), dialog = $('mypage-dialog'), profilePage = document.body.classList.contains('mypage-route') ? $('profile-page') : null;
   const icons = { restaurant: '🍴', cafe: '☕', stay: '🛏', other: '📍' };
   const labels = { restaurant: '음식점', cafe: '카페', stay: '숙박', other: '기타' };
   let avatar = null, records = [], category = 'all';
@@ -21,11 +21,14 @@
     ['profile', 'places', 'password'].forEach(tab => { $(`mypage-${tab}`).hidden = tab !== name; });
     if (name === 'places') loadPlaces();
   }
-  $('auth-user').addEventListener('click', () => { if (!window.placeCurrentUser) return; fillProfile(window.placeCurrentUser); $('profile-status').textContent = ''; $('password-status').textContent = ''; selectTab('profile'); dialog.showModal(); });
-  $('mypage-close').addEventListener('click', () => dialog.close());
-  dialog.querySelectorAll('[data-tab]').forEach(button => button.addEventListener('click', () => selectTab(button.dataset.tab)));
-  document.addEventListener('place-auth-change', event => { if (!event.detail.signedIn && dialog.open) dialog.close(); });
-  $('profile-avatar').addEventListener('change', async event => {
+  // The account control is a real anchor to /mypage.html; do not intercept it.
+  $('mypage-close')?.addEventListener('click', () => dialog.close());
+  dialog?.querySelectorAll('[data-tab]').forEach(button => button.addEventListener('click', () => selectTab(button.dataset.tab)));
+  document.addEventListener('place-auth-change', event => {
+    if (!event.detail.signedIn && dialog?.open) dialog.close();
+    if (profilePage && event.detail.signedIn) { profilePage.hidden = false; fillProfile(event.detail.user); selectTab('profile'); }
+  });
+  $('profile-avatar')?.addEventListener('change', async event => {
     const file = event.target.files[0]; if (!file) return;
     if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) { $('profile-status').textContent = '5MB 이하의 PNG, JPEG 또는 WebP 이미지를 선택해 주세요.'; event.target.value = ''; return; }
     try {
@@ -35,13 +38,13 @@
       avatar = canvas.toDataURL('image/jpeg', .85); showAvatar(); $('profile-status').textContent = '저장하기를 누르면 이미지가 적용됩니다.';
     } catch { $('profile-status').textContent = '이미지를 읽지 못했습니다.'; }
   });
-  $('avatar-remove').addEventListener('click', () => { avatar = null; $('profile-avatar').value = ''; showAvatar(); });
-  $('profile-form').addEventListener('submit', async event => {
+  $('avatar-remove')?.addEventListener('click', () => { avatar = null; if ($('profile-avatar')) $('profile-avatar').value = ''; showAvatar(); });
+  $('profile-form')?.addEventListener('submit', async event => {
     event.preventDefault(); const status = $('profile-status'), submit = event.currentTarget.querySelector('[type=submit]'); submit.disabled = true;
     try { const result = await patch({ action: 'profile', username: $('profile-username').value, nickname: $('profile-nickname').value, gender: $('profile-gender').value, avatar }); window.placeShowUser(result.user); fillProfile(result.user); status.textContent = '내 정보를 저장했습니다.'; }
     catch (error) { status.textContent = error.message; } finally { submit.disabled = false; }
   });
-  $('password-form').addEventListener('submit', async event => {
+  $('password-form')?.addEventListener('submit', async event => {
     event.preventDefault(); const status = $('password-status'), form = event.currentTarget, data = Object.fromEntries(new FormData(form));
     if (data.newPassword !== data.passwordConfirm) { status.textContent = '새 비밀번호 확인이 일치하지 않습니다.'; return; }
     const submit = form.querySelector('[type=submit]'); submit.disabled = true;
@@ -62,5 +65,5 @@
     });
   }
   async function loadPlaces() { $('mypage-places-status').textContent = '불러오는 중...'; try { records = (await api('/api/places/records?mode=mypage')).records || []; renderPlaces(); } catch (error) { $('mypage-places-status').textContent = error.message; } }
-  dialog.querySelectorAll('[data-category]').forEach(button => button.addEventListener('click', () => { category = button.dataset.category; dialog.querySelectorAll('[data-category]').forEach(item => item.setAttribute('aria-pressed', String(item === button))); renderPlaces(); }));
+  dialog?.querySelectorAll('[data-category]').forEach(button => button.addEventListener('click', () => { category = button.dataset.category; dialog.querySelectorAll('[data-category]').forEach(item => item.setAttribute('aria-pressed', String(item === button))); renderPlaces(); }));
 })();

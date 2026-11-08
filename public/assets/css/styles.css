@@ -86,6 +86,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 
 /* Apply only surface styling: the SVG polygons, borders, gestures and viewBox remain functional. */
 #region-map .region-other{fill:#dce5e1;stroke:#c4d1cc;stroke-width:1.1px;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+#region-map path.region-other,#region-map path.region-selected,#region-map path.region-side,#region-map path.neighborhood-border{stroke-linejoin:round!important;stroke-linecap:round!important}
+#region-map path.region-selected,#region-map path.neighborhood-border{stroke:#829da3!important}
+#region-map path.region-selected{stroke-width:2px!important}
+#region-map #region-overview-selected path.region-selected{stroke-width:2px!important}
+#region-map path.neighborhood-border{stroke-width:1.35px!important}
 #region-map .region-side{fill:#819fa7;stroke:#819fa7;stroke-width:1px;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
 #region-map .region-selected{fill:url(#selected-gradient);stroke:#9ebbc7;stroke-width:5px;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke;paint-order:stroke fill;filter:drop-shadow(0 2px 0 #89a8b2) drop-shadow(0 4px 0 #829fa9) drop-shadow(0 9px 8px #7c979b55)}
 #region-map .neighborhood-border{stroke:#8ea9ae;stroke-width:1.1px;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
@@ -94,14 +99,26 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 #region-map #neighborhood-labels text{fill:#354e53;stroke:#e7efeb;stroke-width:3px;stroke-linejoin:round;paint-order:stroke fill;font-weight:650}
 #region-map #region-overview-background .region-other{fill:#dce5e1;stroke:#c4d1cc;stroke-width:1px}
 #region-map #region-overview-depth .region-side{fill:#819fa7;stroke:#819fa7}
-#region-map #region-overview-selected .region-selected{fill:url(#selected-gradient);stroke:#9ebbc7;stroke-width:5px;filter:drop-shadow(0 2px 0 #89a8b2) drop-shadow(0 4px 0 #829fa9) drop-shadow(0 9px 8px #7c979b55)}
+#region-map #region-overview-selected .region-selected{fill:url(#selected-gradient);stroke:#9ebbc7;stroke-width:2px;stroke-linejoin:round;stroke-linecap:round;filter:drop-shadow(0 2px 0 #89a8b2) drop-shadow(0 4px 0 #829fa9) drop-shadow(0 9px 8px #7c979b55)}
 @media(max-width:760px){#region-map .region-selected,#region-map #region-overview-selected .region-selected{stroke-width:4px}#region-map .neighborhood-border{stroke-width:1px}}
 
 /* Keep marker hit areas at the icon itself; never scale the translated map position. */
 #region-map .place-marker-position{pointer-events:none}
 #region-map .place-marker{pointer-events:none}
-#region-map .place-marker-hit{pointer-events:all;cursor:pointer;outline:none}
-#region-map .place-marker-hit:focus-visible{stroke:#405d65;stroke-width:2px;stroke-dasharray:3 2;vector-effect:non-scaling-stroke}
-#region-map .place-marker .marker-icon{pointer-events:none;transform-box:fill-box;transform-origin:center;transition:transform .16s ease}
-#region-map .place-marker-hit:hover+.marker-icon,#region-map .place-marker-hit:focus-visible+.marker-icon{transform:scale(1.08)}
+#region-map .place-marker-hit{pointer-events:visible;cursor:pointer;outline:none}
+#region-map .place-marker-hit-area{pointer-events:all;fill:#000;fill-opacity:0}
+#region-map .place-marker-hit:focus-visible .place-marker-hit-area{stroke:#405d65;stroke-width:2px;stroke-dasharray:3 2;vector-effect:non-scaling-stroke}
+#region-map .place-marker-hit .marker-icon{pointer-events:none;transform-box:fill-box;transform-origin:center;transition:transform .16s ease}
+#region-map .place-marker-hit:hover .marker-icon,#region-map .place-marker-hit:focus-visible .marker-icon{transform:scale(1.08)}
 @media(prefers-reduced-motion:reduce){#region-map .place-marker .marker-icon{transition:none}}
+
+/* The profile is a destination page, not a modal message. */
+.profile-page{width:min(920px,calc(100% - 40px));min-height:calc(100svh - 86px);margin:40px auto 80px;color:#263d33}
+.profile-page[hidden]{display:none!important}
+.profile-page-header{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin:0 0 28px;padding-bottom:20px;border-bottom:1px solid #d8e1d5}
+.profile-page-header h1{margin:0;font-size:clamp(30px,5vw,46px);letter-spacing:-.06em}
+.profile-page-header p{margin:8px 0 0;color:#61766a;font-size:14px}
+.profile-page-back{border:1px solid #c6d4c7;border-radius:999px;background:#fffefa;padding:10px 16px;color:#315745;font-weight:700;white-space:nowrap}
+.profile-page .mypage-dialog{display:block;position:static;inset:auto;transform:none;width:100%;max-width:none;max-height:none;overflow:visible;margin:0;padding:28px;border:1px solid #d8e1d5;border-radius:22px;background:#fffefa;box-shadow:0 14px 40px #304b3a12}
+.profile-page .mypage-dialog::backdrop{display:none}
+@media(max-width:600px){.profile-page{width:calc(100% - 28px);margin:26px auto 52px}.profile-page-header{align-items:flex-start;flex-direction:column;gap:14px}.profile-page .mypage-dialog{padding:20px;border-radius:18px}}

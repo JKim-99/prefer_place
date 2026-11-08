@@ -130,6 +130,7 @@
     const makePath = (f, className) => {
       const path = document.createElementNS(NS, 'path'); path.setAttribute('d', pathFor(f)); path.setAttribute('fill-rule', 'evenodd'); path.setAttribute('vector-effect', 'non-scaling-stroke');
       path.setAttribute('class', className);
+      path.setAttribute('stroke-linejoin', 'round'); path.setAttribute('stroke-linecap', 'round');
       return path;
     };
     const background = document.createElementNS(NS, 'g'); background.id = 'region-overview-background';
@@ -140,8 +141,7 @@
     const base = document.createElementNS(NS, 'g');
     base.id = 'region-overview-depth';
     base.classList.add('region-depth');
-    // The silhouette look comes from the shared SVG drop shadow; one offset
-    // rim keeps this detailed map from accumulating oversized dark edges.
+    // Keep one shallow offset rim; rounded joins create the soft contour.
     for (let layer = 1; layer >= 1; layer--) {
       selected.forEach((f) => {
         const path = makePath(f, 'region-side');

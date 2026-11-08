@@ -35,14 +35,19 @@
       position.setAttribute('transform', `translate(${Number(p.x) * Math.cos(36.5*Math.PI/180)} ${-Number(p.y)})`);
       const marker = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       marker.setAttribute('class', 'place-marker');
-      const hit = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      hit.setAttribute('class', 'place-marker-hit'); hit.setAttribute('cx', '0'); hit.setAttribute('cy', '0'); hit.setAttribute('r', String(size * .46));
-      hit.setAttribute('tabindex', '0'); hit.setAttribute('role', 'button'); hit.setAttribute('aria-label', `${p.name} 장소 정보 보기`); hit.setAttribute('fill', 'transparent');
+      const hit = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      hit.setAttribute('class', 'place-marker-hit'); hit.setAttribute('tabindex', '0'); hit.setAttribute('role', 'button'); hit.setAttribute('aria-label', `${p.name} 장소 정보 보기`);
+      const hitArea = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      hitArea.setAttribute('class', 'place-marker-hit-area'); hitArea.setAttribute('cx', '0'); hitArea.setAttribute('cy', '0'); hitArea.setAttribute('r', String(size * .46));
+      hitArea.setAttribute('fill', '#000'); hitArea.setAttribute('fill-opacity', '0');
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('class', 'marker-icon'); text.setAttribute('x', '0'); text.setAttribute('y', '0');
       text.setAttribute('font-size', size); text.setAttribute('text-anchor', 'middle'); text.setAttribute('dominant-baseline', 'central'); text.setAttribute('pointer-events', 'none'); text.textContent = icons[category(p.category)];
-      marker.append(hit, text);
-      hit.addEventListener('pointerenter', () => showTooltip(hit, p)); hit.addEventListener('pointerleave', () => { tooltip.hidden = true; });
+      hit.append(hitArea, text); marker.append(hit);
+      hit.addEventListener('pointerenter', () => showTooltip(hit, p)); hit.addEventListener('pointerleave', event => {
+        if (event.relatedTarget && hit.contains(event.relatedTarget)) return;
+        tooltip.hidden = true;
+      });
       hit.addEventListener('focus', () => showTooltip(hit, p)); hit.addEventListener('blur', () => { tooltip.hidden = true; });
       hit.addEventListener('click', () => showDetail(p)); hit.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); showDetail(p); } });
       position.append(marker); group.append(position);
