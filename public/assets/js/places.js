@@ -4,22 +4,9 @@
   const dialog = $('place-dialog'), searchStatus = $('place-search-status'), results = $('place-search-results');
   const legend = document.querySelector('.place-legend');
   let region = null, mode = 'mine', live = [], records = [], generation = 0;
-  const sessionPlaces = new Map();
-  const regionKey = value => JSON.stringify([value.sido, value.district]);
   const icons = { restaurant: '🍴', cafe: '☕', stay: '🛏', other: '📍' };
-  const category = code => ({ FD6: 'restaurant', CE7: 'cafe', AD5: 'stay' }[code] || 'other');
+  const category = code => ({ FD6: 'restaurant', CE7: 'cafe', AD5: 'stay', restaurant: 'restaurant', cafe: 'cafe', stay: 'stay', other: 'other' }[code] || 'other');
   const selectedCategories = () => new Set([...legend.querySelectorAll('input:checked')].map(i => i.value));
-  function isInRegion(x, y, shapes) {
-    function inRing(ring) {
-      let inside = false;
-      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-        const [xi, yi] = ring[i], [xj, yj] = ring[j];
-        if ((yi > y) !== (yj > y) && x < (xj-xi)*(y-yi)/(yj-yi)+xi) inside = !inside;
-      }
-      return inside;
-    }
-    return shapes.some(f => (f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates).some(polygon => inRing(polygon[0]) && !polygon.slice(1).some(inRing)));
-  }
   const tooltip = $('marker-tooltip'), detail = $('place-detail'), stage = $('map-stage');
   function hideInfo() { tooltip.hidden = true; detail.hidden = true; }
   function showTooltip(marker, place) {
@@ -32,14 +19,14 @@
   function showDetail(place) {
     tooltip.hidden = true; $('place-detail-name').textContent = place.name;
     $('place-detail-category').textContent = place.categoryName || '분류 정보 없음';
-    $('place-detail-address').textContent = place.address || '주소 정보 없음';
-    $('place-detail-link').href = `https://place.map.kakao.com/${encodeURIComponent(place.id)}`;
+    $('place-detail-address').textContent = [place.address || '주소 정보 없음', place.dataVersion ? `공공데이터 기준일 ${place.dataVersion}` : ''].filter(Boolean).join(' · ');
+    $('place-detail-link').hidden = !place.url; if (place.url) $('place-detail-link').href = place.url;
     detail.hidden = false;
   }
   $('place-detail-close').addEventListener('click', hideInfo);
   function renderMarkers() {
     svg.querySelector('#place-markers')?.remove(); hideInfo();
-    if (!region || !live.length || mode !== 'mine') return;
+    if (!region || !live.length) return;
     const vb = svg.viewBox.baseVal, size = Math.max(vb.width, vb.height) * .045;
     const group = document.createElementNS('http://www.w3.org/2000/svg', 'g'); group.id = 'place-markers';
     live.filter(p => selectedCategories().has(category(p.category))).forEach(p => {
@@ -64,15 +51,14 @@
   function renderRecords() {
     const list = $('saved-places'); list.replaceChildren();
     if (!records.length) { status.textContent = mode === 'popular' ? '공개 기록이 3명 이상인 장소가 아직 없어요.' : mode === 'anonymous' ? '이 지역에 공개된 장소가 아직 없어요.' : '이 지역에 저장한 장소가 없어요.'; return; }
-    const namedRecords = records.filter(record => record.alias && record.alias.trim());
+    const namedRecords = records.filter(record => record.name || (record.alias && record.alias.trim()) || /^\d+$/.test(record.place_id));
     status.textContent = mode === 'popular' ? '공개 저장 사용자 수 기준입니다.' : '';
     namedRecords.forEach(record => {
       const li = document.createElement('li'), link = document.createElement('a');
-      link.href = `https://place.map.kakao.com/${record.place_id}`; link.target = '_blank'; link.rel = 'noopener noreferrer';
-      link.textContent = record.alias; li.append(link);
+      if (/^\d+$/.test(record.place_id)) { link.href = `https://place.map.kakao.com/${record.place_id}`; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = record.alias || '기존 카카오 장소 보기'; } else { link.textContent = record.alias || record.name; } li.append(link);
       if (mode === 'mine') {
         const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = '삭제';
-        remove.addEventListener('click', async () => { try { await api(`/api/places/records?id=${encodeURIComponent(record.place_id)}`, { method: 'DELETE' }); live = live.filter(p => p.id !== record.place_id); sessionPlaces.set(regionKey(region), live); renderMarkers(); await loadRecords(); } catch (error) { status.textContent = error.message; } }); li.append(remove);
+        remove.addEventListener('click', async () => { try { await api(`/api/places/records?id=${encodeURIComponent(record.place_id)}`, { method: 'DELETE' }); live = live.filter(p => p.id !== record.place_id); renderMarkers(); await loadRecords(); } catch (error) { status.textContent = error.message; } }); li.append(remove);
       }
       list.append(li);
     });
@@ -82,12 +68,13 @@
     try {
       const params = new URLSearchParams({ sido: region.sido, district: region.district, mode });
       const data = await api(`/api/places/records?${params}`); if (version !== generation) return;
-      records = data.records || []; renderRecords();
+      records = data.records || []; live = records.filter(r => r.name && Number.isFinite(Number(r.longitude)) && Number.isFinite(Number(r.latitude))).map(r => ({ id: r.place_id, name: r.alias || r.name, address: r.address, category: r.category, categoryName: r.category_name, x: r.longitude, y: r.latitude, dataVersion: r.data_version })); renderRecords();
     } catch (error) { if (version !== generation) return; records = []; $('saved-places').replaceChildren(); status.textContent = error.message; }
     renderMarkers();
   }
-  document.addEventListener('place-region-change', event => { region = event.detail; live = sessionPlaces.get(regionKey(region)) || []; records = []; loadRecords(); });
-  document.addEventListener('place-auth-change', event => { if (!event.detail.signedIn) { sessionPlaces.clear(); live = []; } if (region) loadRecords(); });
+  document.addEventListener('place-region-change', event => { region = event.detail; live = []; records = []; loadRecords(); });
+  document.addEventListener('place-auth-change', event => { if (!event.detail.signedIn) live = []; if (region) loadRecords(); });
+  document.addEventListener('place-records-change', () => { if (region) loadRecords(); });
   legend.addEventListener('change', renderMarkers);
   document.querySelectorAll('.place-view').forEach(button => button.addEventListener('click', () => {
     mode = button.dataset.view;
@@ -126,10 +113,10 @@
     const version = ++searchVersion; searchAbort = new AbortController();
     results.replaceChildren(); searchStatus.textContent = '검색 중...';
     try {
-      const params = new URLSearchParams({ q: `${region.sido} ${region.district} ${query}` });
+      const params = new URLSearchParams({ q: query, sido: region.sido, district: region.district });
       const data = await api(`/api/places/search?${params}`, { signal: searchAbort.signal }); if (requestedRegion !== region || version !== searchVersion || queryInput.value.trim() !== query) return;
-      const places = data.places.filter(p => Number.isFinite(Number(p.x)) && Number.isFinite(Number(p.y)) && isInRegion(Number(p.x), Number(p.y), region.shapes));
-      searchStatus.textContent = places.length ? '' : '이 지역에서 검색 결과를 찾지 못했어요.';
+      const places = data.places.filter(p => Number.isFinite(Number(p.x)) && Number.isFinite(Number(p.y)));
+      searchStatus.textContent = places.length ? `공공 상가정보 기준일: ${places[0].data_version}` : data.catalogReady === false ? '장소 데이터가 아직 준비되지 않았어요.' : '이 지역에서 검색 결과를 찾지 못했어요.';
       places.forEach(p => {
         const li = document.createElement('li'); const title = document.createElement('strong'); title.append(document.createTextNode(`${icons[category(p.category)]} `)); const name = document.createElement('span'); highlightName(name, p.name, query); title.append(name);
         const detail = document.createElement('p'); detail.textContent = [p.categoryName, p.address].filter(Boolean).join(' · ');
@@ -138,8 +125,8 @@
         form.addEventListener('submit', async e => {
           e.preventDefault(); save.disabled = true;
           try {
-            await api('/api/places/records', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ placeId: p.id, sido: region.sido, district: region.district, alias: '', isPublic: false }) });
-            live = live.filter(existing => existing.id !== p.id); live.push(p); sessionPlaces.set(regionKey(region), live); mode = 'mine'; document.querySelector('[data-view="mine"]').click(); dialog.close();
+            await api('/api/places/records', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ placeId: p.id, sido: region.sido, district: region.district }) });
+            mode = 'mine'; document.querySelector('[data-view="mine"]').click(); dialog.close();
           } catch (error) { searchStatus.textContent = error.message; } finally { save.disabled = false; }
         });
         li.append(title, detail, form); results.append(li);

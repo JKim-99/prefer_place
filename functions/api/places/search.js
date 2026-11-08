@@ -3,15 +3,11 @@ import { currentUser } from '../../../lib/server/place-auth.js';
 export async function onRequestGet({ request, env }) {
   if (!env.DB) return json({ error: '데이터베이스가 설정되지 않았습니다.' }, 503);
   if (!await currentUser(request, env.DB)) return json({ error: '로그인이 필요합니다.' }, 401);
-  if (!env.KAKAO_REST_API_KEY) return json({ error: '카카오 장소 검색 키가 설정되지 않았습니다.' }, 503);
-  const url = new URL(request.url); const q = (url.searchParams.get('q') || '').trim();
-  if (q.length < 2 || q.length > 100) return json({ error: '검색어를 2~100자로 입력해 주세요.' }, 400);
-  const endpoint = new URL('https://dapi.kakao.com/v2/local/search/keyword.json');
-  endpoint.searchParams.set('query', q); endpoint.searchParams.set('size', '15');
-  try {
-    const response = await fetch(endpoint, { headers: { Authorization: `KakaoAK ${env.KAKAO_REST_API_KEY}` } });
-    if (!response.ok) return json({ error: response.status === 429 ? '검색 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.' : '카카오 검색을 이용할 수 없습니다. API 설정을 확인해 주세요.' }, response.status === 429 ? 429 : 502);
-    const data = await response.json();
-    return json({ places: (data.documents || []).map(p => ({ id: p.id, name: p.place_name, category: p.category_group_code, categoryName: p.category_name, address: p.road_address_name || p.address_name, x: p.x, y: p.y, url: p.place_url })) });
-  } catch { return json({ error: '카카오 검색에 연결하지 못했습니다.' }, 502); }
+  const params = new URL(request.url).searchParams;
+  const q = (params.get('q') || '').trim(), sido = (params.get('sido') || '').trim(), district = (params.get('district') || '').trim();
+  if (q.length < 2 || q.length > 80 || !sido || sido.length > 40 || !district || district.length > 40) return json({ error: '지역과 검색어를 확인해 주세요.' }, 400);
+  const escaped = q.replace(/[\\%_]/g, '\\$&');
+  const data = await env.DB.prepare(`SELECT id, name, address, category, category_name, longitude, latitude, data_version FROM public_places WHERE region_sido = ? AND region_district = ? AND data_version = (SELECT data_version FROM public_catalog_meta WHERE id = 1) AND name LIKE ? ESCAPE '\\' ORDER BY CASE WHEN name LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END, name LIMIT 30`).bind(sido, district, `%${escaped}%`, `${escaped}%`).all();
+  const catalogReady = data.results.length > 0 || !!await env.DB.prepare('SELECT 1 AS present FROM public_catalog_meta WHERE id = 1').first();
+  return json({ catalogReady, places: data.results.map(p => ({ ...p, x: p.longitude, y: p.latitude, categoryName: p.category_name })) });
 }
