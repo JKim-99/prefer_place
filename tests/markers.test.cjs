@@ -4,7 +4,7 @@ const { readFileSync } = require('node:fs');
 const { resolve } = require('node:path');
 const vm = require('node:vm');
 
-test('adding a search result positions its marker independently of hover styling', async () => {
+test('adding a search result gives the marker a stable bounded hit target', async () => {
   class Element {
     constructor(tag = 'div') { this.tag = tag; this.children = []; this.listeners = {}; this.attrs = {}; this.value = ''; this.dataset = {}; this.hidden = false; this.classList = { toggle() {} }; }
     addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); }
@@ -54,11 +54,12 @@ test('adding a search result positions its marker independently of hover styling
   assert.equal(hit.tag, 'g'); assert.equal(hit.attrs.class, 'place-marker-hit'); assert.equal(hit.attrs.role, 'button');
   assert.equal(hitArea.tag, 'circle'); assert.equal(hitArea.attrs.class, 'place-marker-hit-area');
   assert.ok(Number(hitArea.attrs.r) > 0 && Number(hitArea.attrs.r) < Number(icon.attrs['font-size']));
+  assert.equal(hitArea.attrs['pointer-events'], undefined);
+  assert.equal(icon.attrs.transform, undefined);
   assert.equal(icon.attrs.class, 'marker-icon'); assert.equal(icon.attrs['pointer-events'], 'none');
   assert.equal(marker.attrs.role, undefined); assert.equal(marker.attrs.tabindex, undefined); assert.equal(hitArea.attrs.fill, '#000');
   assert.equal(hit.contains(icon), true);
   hit.dispatch('pointerleave', { relatedTarget: icon });
-  // Moving from the transparent hit shape onto its icon stays within one button group.
   assert.equal(hit.contains(icon), true);
   assert.equal(marker.attrs.transform, undefined); assert.equal(position.attrs['pointer-events'], undefined);
 });

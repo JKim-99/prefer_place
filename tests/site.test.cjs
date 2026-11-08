@@ -20,6 +20,7 @@ test('map detail styling follows the homepage palette without removing map contr
   const app = readFileSync(resolve(__dirname, '../public/assets/js/app.js'), 'utf8');
   assert.match(app, /svg\.addEventListener\('wheel'/);
   assert.match(app, /svg\.addEventListener\('pointerdown'/);
+  assert.match(app, /event\.target\.closest\('\.place-marker-hit'\)/);
   assert.match(app, /id = 'neighborhood-borders'/);
   assert.match(app, /for \(let layer = 1; layer >= 1; layer--\)/);
   assert.match(app, /path\.setAttribute\('stroke-linejoin', 'round'\)/);
@@ -27,6 +28,8 @@ test('map detail styling follows the homepage palette without removing map contr
   const places = readFileSync(resolve(__dirname, '../public/assets/js/places.js'), 'utf8');
   assert.match(places, /position\.setAttribute\('class', 'place-marker-position'\)/);
   assert.match(places, /hit\.append\(hitArea, text\); marker\.append\(hit\)/);
+  assert.match(css, /#region-map \.place-marker-hit \.marker-icon\{[^}]*transform:none!important;transition:none!important\}/);
+  assert.doesNotMatch(css, /\.place-marker-hit-area\{[^}]*pointer-events:all/);
 });
 
 test('mypage is a dedicated route and the account control navigates to it', () => {

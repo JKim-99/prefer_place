@@ -6,7 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "prefer-place"
-database_id = "REPLACE_WITH_NEW_D1_DATABASE_ID"
+database_id = "04f50538-f243-49e5-92bb-6d6db4e02a7f"
 migrations_dir = "migrations"
 
 [dev]

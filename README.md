@@ -127,7 +127,7 @@ npm run dev
 
 회원가입과 로그인은 Cloudflare Pages Functions와 D1이 필요합니다. 정적 파일 서버(예: `python -m http.server`)에서는 인증 API가 실행되지 않습니다. 로컬 환경에서는 `npm ci`, `npx wrangler d1 migrations apply prefer-place --local`, `npm run dev` 순으로 실행한 뒤 `http://127.0.0.1:8788/`에 접속합니다. 로컬 계정과 세션은 로컬 D1에만 저장됩니다.
 
-운영 환경에서 로그인하려면 Cloudflare에 별도의 D1 데이터베이스를 만들고 `wrangler.toml`의 `database_id`를 실제 ID로 바꾼 후, 원격 마이그레이션을 적용하고 Pages Functions와 D1 바인딩을 배포해야 합니다. 현재 저장소에는 실제 데이터베이스 ID가 설정되어 있지 않습니다. 비밀번호 재설정과 이메일 확인은 아직 지원하지 않습니다.
+운영 환경에서 로그인하려면 Cloudflare D1 데이터베이스를 만들고 `wrangler.toml`의 `database_id`를 해당 UUID로 설정한 후, 원격 마이그레이션을 적용하고 Pages Functions와 D1 바인딩을 배포해야 합니다. 현재 연결된 Cloudflare 계정에는 `prefer-place` D1을 새로 생성하고 0001–0009 마이그레이션을 적용했습니다. 데이터베이스에는 아직 사용자·장소 데이터가 없으며 공공 상가정보 카탈로그는 별도로 적재해야 합니다. 배포할 때 `wrangler.toml`의 ID가 `REPLACE_WITH_NEW_D1_DATABASE_ID` 같은 placeholder가 아닌지 먼저 확인하세요. 비밀번호 재설정과 이메일 확인은 아직 지원하지 않습니다.
 
 ## 행정 경계 데이터 출처
 

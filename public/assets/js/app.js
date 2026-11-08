@@ -216,7 +216,7 @@
     return point.matrixTransform(matrix.inverse());
   }
   svg.addEventListener('pointerdown', event => {
-    if (!currentView || event.button !== 0 || event.target.closest('.place-marker')) return;
+    if (!currentView || event.button !== 0 || event.target.closest('.place-marker-hit')) return;
     const point = pointerPosition(event); if (!point) return;
     if (animationFrame !== null) { cancelAnimationFrame(animationFrame); animationFrame = null; }
     mapDrag = { pointerId: event.pointerId, x: point.x, y: point.y };
