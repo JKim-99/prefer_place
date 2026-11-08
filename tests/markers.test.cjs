@@ -34,8 +34,8 @@ test('adding a search result positions its marker independently of hover styling
     createTextNode(text) { return { textContent: text }; },
     addEventListener(type, fn) { (listeners[type] ||= []).push(fn); }
   };
-  const place = { id: '123', name: '테스트 카페', x: '127', y: '37.5', category: 'CE7', address: '주소' };
-  const fetch = async (url, options = {}) => ({ ok: true, json: async () => url === '/api/auth/me' ? { user: { id: 'u' } } : url.startsWith('/api/places/search') ? { places: [place] } : url.startsWith('/api/places/records?') ? { records: [{ place_id: '123', alias: '' }] } : { ok: true } });
+  const place = { id: 'biz:MA123', name: '테스트 카페', x: '127', y: '37.5', category: 'cafe', address: '주소' };
+  const fetch = async (url, options = {}) => ({ ok: true, json: async () => url === '/api/auth/me' ? { user: { id: 'u' } } : url.startsWith('/api/places/search') ? { places: [place] } : url.startsWith('/api/places/records?') ? { records: [{ place_id: 'biz:MA123', name: '테스트 카페', longitude: 127, latitude: 37.5, category: 'cafe', alias: '' }] } : { ok: true } });
   const context = { document, fetch, URLSearchParams, AbortController, setTimeout, clearTimeout, console };
   vm.runInNewContext(readFileSync(resolve(__dirname, '../public/assets/js/places.js'), 'utf8'), context);
   const shapes = [{ geometry: { type: 'Polygon', coordinates: [[[126,37],[128,37],[128,38],[126,38],[126,37]]] } }];

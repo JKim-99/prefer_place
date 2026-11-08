@@ -53,10 +53,10 @@
     $('mypage-places-status').textContent = visible.length ? `${visible.length}개의 장소` : '이 카테고리에 저장된 장소가 없어요.';
     visible.forEach(record => {
       const li = document.createElement('li'), info = document.createElement('div'), link = document.createElement('a'), region = document.createElement('small'), toggle = document.createElement('button');
-      link.href = `https://place.map.kakao.com/${encodeURIComponent(record.place_id)}`; link.target = '_blank'; link.rel = 'noopener noreferrer';
-      link.textContent = `${icons[record.category] || icons.other} ${record.alias || '카카오맵에서 장소 확인'} ↗`;
+      if (/^\d+$/.test(record.place_id)) { link.href = `https://place.map.kakao.com/${encodeURIComponent(record.place_id)}`; link.target = '_blank'; link.rel = 'noopener noreferrer'; }
+      link.textContent = `${icons[record.category] || icons.other} ${record.alias || record.name || '기존 카카오 장소 보기'}${record.name ? '' : ' ↗'}`;
       region.textContent = `${record.region_sido} ${record.region_district} · ${labels[record.category] || labels.other}`; info.append(link, region);
-      toggle.type = 'button'; toggle.textContent = record.is_public ? '공개' : '비공개'; toggle.setAttribute('aria-pressed', String(!!record.is_public)); toggle.setAttribute('aria-label', `${record.alias || '장소'} 공개 설정: ${toggle.textContent}`);
+      toggle.type = 'button'; toggle.textContent = record.is_public ? '공개' : '비공개'; toggle.setAttribute('aria-pressed', String(!!record.is_public)); toggle.setAttribute('aria-label', `${record.alias || record.name || '장소'} 공개 설정: ${toggle.textContent}`);
       toggle.addEventListener('click', async () => { toggle.disabled = true; try { await api('/api/places/records', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ placeId: record.place_id, isPublic: !record.is_public }) }); record.is_public = record.is_public ? 0 : 1; renderPlaces(); document.dispatchEvent(new CustomEvent('place-records-change')); } catch (error) { $('mypage-places-status').textContent = error.message; toggle.disabled = false; } });
       li.append(info, toggle); list.append(li);
     });

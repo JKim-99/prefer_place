@@ -9,22 +9,16 @@ const read = path => readFileSync(resolve(__dirname, '..', path), 'utf8');
 const authUrl = moduleUrl(read('lib/server/auth.js'));
 const userUrl = moduleUrl(read('lib/server/place-auth.js').replace("'./auth.js'", `'${authUrl}'`));
 const searchUrl = moduleUrl(read('functions/api/places/search.js').replace("'../../../lib/server/auth.js'", `'${authUrl}'`).replace("'../../../lib/server/place-auth.js'", `'${userUrl}'`));
-test('place search requires a session and key, and forwards only needed Kakao fields', async () => {
-  const { onRequestGet } = await import(searchUrl);
-  const db = { prepare: () => ({ bind: () => ({ first: async () => ({ id: 'user' }) }) }) };
-  const anonymous = new Request('https://example.test/api/places/search?q=cafe');
+test('public place search requires a session and binds escaped regional substring search', async () => {
+  const { onRequestGet } = await import(searchUrl); const calls = [];
+  const db = { prepare(sql) { return { bind(...args) { calls.push({sql,args}); return { first: async () => ({ id: 'user' }), all: async () => ({ results: [{ id:'biz:MA123', name:'테스트 카페', longitude:127, latitude:37, category:'cafe', category_name:'카페' }] }) }; } }; } };
+  const params = new URLSearchParams({q:'카페%_', sido:'서울특별시', district:'강남구'});
+  const anonymous = new Request(`https://example.test/api/places/search?${params}`);
   assert.equal((await onRequestGet({ request: anonymous, env: { DB: db } })).status, 401);
-  const request = new Request('https://example.test/api/places/search?q=cafe', { headers: { Cookie: `place_session=${'a'.repeat(64)}` } });
-  assert.equal((await onRequestGet({ request, env: { DB: db } })).status, 503);
-  const original = globalThis.fetch;
-  try {
-    globalThis.fetch = async (url, options) => {
-      assert.equal(url.hostname, 'dapi.kakao.com'); assert.equal(url.searchParams.get('query'), 'cafe');
-      assert.equal(options.headers.Authorization, 'KakaoAK test-key');
-      return Response.json({ documents: [{ id: '1', place_name: '카페', category_group_code: 'CE7', category_name: '카페', road_address_name: '주소', x: '127', y: '37', place_url: 'https://place.map.kakao.com/1', phone: 'not-returned' }] });
-    };
-    const response = await onRequestGet({ request, env: { DB: db, KAKAO_REST_API_KEY: 'test-key' } });
-    const data = await response.json(); assert.equal(response.status, 200); assert.equal(response.headers.get('cache-control'), 'no-store');
-    assert.equal(data.places[0].name, '카페'); assert.equal(data.places[0].phone, undefined);
-  } finally { globalThis.fetch = original; }
+  const request = new Request(anonymous.url, { headers: { Cookie: `place_session=${'a'.repeat(64)}` } });
+  const response = await onRequestGet({ request, env: { DB: db } });
+  const data = await response.json(); assert.equal(response.status, 200); assert.equal(data.places[0].id, 'biz:MA123');
+  const query = calls.find(call => call.sql.includes('FROM public_places'));
+  assert.deepEqual(query.args.slice(0, 2), ['서울특별시','강남구']);
+  assert.equal(query.args[2], '%카페\\%\\_%');
 });
