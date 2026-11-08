@@ -7,8 +7,9 @@
   const confirm = $('confirm-region');
   const svg = $('region-map');
   const NS = 'http://www.w3.org/2000/svg';
-  let features = [], sido = '', district = '', chosen = null;
+  let features = [], neighborhoods = [], sido = '', district = '', chosen = null;
   let currentView = null, baseView = null, animationFrame = null, featured = null, pressedFeature = null;
+  let neighborhoodLabels = [];
   $('open-picker').disabled = true; $('change-location').disabled = true;
 
   // 일반구가 있는 시는 시 단위로 선택하고 모든 구를 함께 표시합니다.
@@ -59,6 +60,38 @@
   });
 
   function rings(geometry) { return geometry.type === 'Polygon' ? geometry.coordinates : geometry.coordinates.flat(); }
+  const project = ([x, y]) => [x * Math.cos(36.5 * Math.PI / 180), -y];
+  function neighborhoodCenter(geometry) {
+    const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
+    let best = null;
+    for (const polygon of polygons) {
+      const ring = polygon[0]; let twiceArea = 0, sumX = 0, sumY = 0;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const [x1, y1] = project(ring[j]), [x2, y2] = project(ring[i]);
+        const cross = x1 * y2 - x2 * y1; twiceArea += cross; sumX += (x1+x2)*cross; sumY += (y1+y2)*cross;
+      }
+      if (Math.abs(twiceArea) < 1e-12) continue;
+      const candidate = { x: sumX / (3 * twiceArea), y: sumY / (3 * twiceArea), area: Math.abs(twiceArea) };
+      if (!best || candidate.area > best.area) best = candidate;
+    }
+    return best;
+  }
+  function updateNeighborhoodLabels() {
+    if (!currentView || !baseView) return;
+    const layer = svg.querySelector('#neighborhood-labels'); if (!layer) return;
+    const zoomed = currentView[2] / baseView[2] <= .4;
+    layer.style.display = zoomed ? '' : 'none'; if (!zoomed) return;
+    const rect = svg.getBoundingClientRect(); if (!rect.width || !rect.height) return;
+    const scale = Math.max(currentView[2] / rect.width, currentView[3] / rect.height);
+    const occupied = [];
+    neighborhoodLabels.forEach(({ element, x, y }) => {
+      const visible = x >= currentView[0] && x <= currentView[0]+currentView[2] && y >= currentView[1] && y <= currentView[1]+currentView[3];
+      const crowded = occupied.some(p => Math.abs(p.x-x) < 60*scale && Math.abs(p.y-y) < 19*scale);
+      element.style.display = visible && !crowded ? '' : 'none';
+      if (visible && !crowded) occupied.push({ x, y });
+      element.setAttribute('font-size', String(12 * scale));
+    });
+  }
   function renderMap() {
     const selected = features.filter((f) => f.properties.sidonm === chosen.sido && cityName(f.properties.sggnm) === chosen.district);
     if (!selected.length) return;
@@ -67,7 +100,7 @@
     svg.setAttribute('aria-label', `${chosen.sido} 지도에서 ${chosen.district} 강조`);
     const allPoints = selected.flatMap((f) => rings(f.geometry).flat());
     // 단순 원통 투영에서 위도에 따른 가로 축 보정
-    const xy = ([x, y]) => [x * Math.cos(36.5 * Math.PI / 180), -y];
+    const xy = project;
     const points = allPoints.map(xy); const xs = points.map((p) => p[0]), ys = points.map((p) => p[1]);
     const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
     const pad = Math.max(maxX - minX, maxY - minY) * .1;
@@ -106,6 +139,18 @@
     svg.append(base);
     selected.forEach((f) => selectedGroup.append(makePath(f, 'region-selected')));
     svg.append(selectedGroup);
+    const borders = document.createElementNS(NS, 'g'); borders.id = 'neighborhood-borders';
+    const labels = document.createElementNS(NS, 'g'); labels.id = 'neighborhood-labels'; labels.setAttribute('aria-hidden', 'true');
+    neighborhoodLabels = [];
+    neighborhoods.forEach((feature) => {
+      const path = makePath(feature, 'neighborhood-border'); borders.append(path);
+      const center = neighborhoodCenter(feature.geometry);
+      if (!center || !feature.properties.dong) return;
+      const text = document.createElementNS(NS, 'text'); text.setAttribute('x', center.x); text.setAttribute('y', center.y);
+      text.setAttribute('text-anchor', 'middle'); text.setAttribute('dominant-baseline', 'middle'); text.textContent = feature.properties.dong;
+      labels.append(text); neighborhoodLabels.push({ element: text, x: center.x, y: center.y });
+    });
+    svg.append(borders, labels);
     animateView(targetView);
     document.dispatchEvent(new CustomEvent('place-region-change', { detail: { ...chosen, shapes: selected } }));
   }
@@ -115,6 +160,7 @@
     if (!start || matchMedia('(prefers-reduced-motion: reduce)').matches) {
       currentView = target;
       svg.setAttribute('viewBox', target.join(' '));
+      updateNeighborhoodLabels();
       return;
     }
     const started = performance.now();
@@ -123,26 +169,37 @@
       const eased = 1 - Math.pow(1 - progress, 3);
       currentView = start.map((value, i) => value + (target[i] - value) * eased);
       svg.setAttribute('viewBox', currentView.join(' '));
+      updateNeighborhoodLabels();
       animationFrame = progress < 1 ? requestAnimationFrame(step) : null;
     }
     animationFrame = requestAnimationFrame(step);
   }
-  function zoomMap(factor) {
+  function zoomMap(factor, anchor) {
     if (!currentView || !baseView) return;
     if (animationFrame !== null) { cancelAnimationFrame(animationFrame); animationFrame = null; }
-    const ratio = Math.max(.2, Math.min(4, currentView[2] * factor / baseView[2]));
+    const ratio = Math.max(.035, Math.min(4, currentView[2] * factor / baseView[2]));
     const width = baseView[2] * ratio, height = baseView[3] * ratio;
-    const centerX = currentView[0] + currentView[2] / 2, centerY = currentView[1] + currentView[3] / 2;
-    currentView = [centerX - width / 2, centerY - height / 2, width, height];
+    const centerX = anchor?.x ?? currentView[0] + currentView[2] / 2, centerY = anchor?.y ?? currentView[1] + currentView[3] / 2;
+    const xFraction = (centerX - currentView[0]) / currentView[2], yFraction = (centerY - currentView[1]) / currentView[3];
+    currentView = [centerX - width * xFraction, centerY - height * yFraction, width, height];
     svg.setAttribute('viewBox', currentView.join(' '));
+    updateNeighborhoodLabels();
     $('marker-tooltip').hidden = true;
   }
   $('zoom-in').addEventListener('click', () => zoomMap(.8));
   $('zoom-out').addEventListener('click', () => zoomMap(1.25));
   $('zoom-reset').addEventListener('click', () => { if (baseView) animateView(baseView); });
-  svg.addEventListener('wheel', event => { if (!currentView) return; event.preventDefault(); zoomMap(event.deltaY < 0 ? .85 : 1 / .85); }, { passive: false });
-  fetch('assets/data/sigungu.geojson').then((response) => { if (!response.ok) throw new Error('data'); return response.json(); }).then((data) => {
+  svg.addEventListener('wheel', event => {
+    if (!currentView || !event.deltaY) return;
+    const matrix = svg.getScreenCTM(); if (!matrix) return;
+    const point = svg.createSVGPoint(); point.x = event.clientX; point.y = event.clientY;
+    const anchor = point.matrixTransform(matrix.inverse());
+    event.preventDefault(); zoomMap(event.deltaY < 0 ? .85 : 1 / .85, anchor);
+  }, { passive: false });
+  window.addEventListener('resize', updateNeighborhoodLabels);
+  Promise.all(['assets/data/sigungu.geojson', 'assets/data/emd.geojson'].map(url => fetch(url).then(response => { if (!response.ok) throw new Error('data'); return response.json(); }))).then(([data, dongData]) => {
     features = data.features.filter((f) => f.properties?.sidonm && f.properties?.sggnm && f.geometry);
+    neighborhoods = dongData.features.filter(f => f.properties?.dong && f.geometry);
     $('open-picker').disabled = false; $('change-location').disabled = false;
     const regionMap = new Map();
     features.forEach((f) => {
