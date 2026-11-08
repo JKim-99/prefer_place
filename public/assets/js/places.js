@@ -3,7 +3,7 @@
   const $ = id => document.getElementById(id), status = $('place-status'), svg = $('region-map');
   const dialog = $('place-dialog'), searchStatus = $('place-search-status'), results = $('place-search-results');
   const legend = document.querySelector('.place-legend');
-  let region = null, mode = 'mine', live = [], manual = [], records = [], generation = 0, selectingPoint = false, point = null;
+  let region = null, mode = 'mine', live = [], records = [], generation = 0;
   const sessionPlaces = new Map();
   const regionKey = value => JSON.stringify([value.sido, value.district]);
   const icons = { restaurant: '🍴', cafe: '☕', stay: '🛏', other: '📍' };
@@ -33,30 +33,27 @@
     tooltip.hidden = true; $('place-detail-name').textContent = place.name;
     $('place-detail-category').textContent = place.categoryName || '분류 정보 없음';
     $('place-detail-address').textContent = place.address || '주소 정보 없음';
-    const manualPlace = place.source === 'manual';
-    $('place-detail-link').hidden = manualPlace; $('manual-delete').hidden = !manualPlace;
-    $('place-detail-source').textContent = manualPlace ? '직접 입력한 장소' : '장소 정보 제공: 카카오맵';
-    if (!manualPlace) $('place-detail-link').href = `https://place.map.kakao.com/${encodeURIComponent(place.id)}`;
-    $('manual-delete').onclick = manualPlace ? async () => { try { await api(`/api/places/manual?id=${encodeURIComponent(place.id)}`, { method: 'DELETE' }); await loadRecords(); } catch (error) { status.textContent = error.message; } } : null;
+    $('place-detail-link').href = `https://place.map.kakao.com/${encodeURIComponent(place.id)}`;
     detail.hidden = false;
   }
   $('place-detail-close').addEventListener('click', hideInfo);
   function renderMarkers() {
     svg.querySelector('#place-markers')?.remove(); hideInfo();
-    if (!region || (!live.length && !manual.length) || mode !== 'mine') return;
+    if (!region || !live.length || mode !== 'mine') return;
     const vb = svg.viewBox.baseVal, size = Math.max(vb.width, vb.height) * .045;
     const group = document.createElementNS('http://www.w3.org/2000/svg', 'g'); group.id = 'place-markers';
-    [...live, ...manual].filter(p => selectedCategories().has(p.source === 'manual' ? p.category : category(p.category))).forEach(p => {
+    live.filter(p => selectedCategories().has(category(p.category))).forEach(p => {
+      const position = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      position.setAttribute('transform', `translate(${Number(p.x) * Math.cos(36.5*Math.PI/180)} ${-Number(p.y)})`);
       const marker = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       marker.setAttribute('class', 'place-marker'); marker.setAttribute('tabindex', '0'); marker.setAttribute('role', 'button'); marker.setAttribute('aria-label', `${p.name} 장소 정보 보기`);
-      marker.setAttribute('transform', `translate(${Number(p.x) * Math.cos(36.5*Math.PI/180)} ${-Number(p.y)})`);
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('class', 'marker-icon'); text.setAttribute('x', '0'); text.setAttribute('y', '0');
-      text.setAttribute('font-size', size); text.setAttribute('text-anchor', 'middle'); text.setAttribute('dominant-baseline', 'central'); text.textContent = icons[p.source === 'manual' ? p.category : category(p.category)];
+      text.setAttribute('font-size', size); text.setAttribute('text-anchor', 'middle'); text.setAttribute('dominant-baseline', 'central'); text.textContent = icons[category(p.category)];
       marker.append(text); marker.addEventListener('pointerenter', () => showTooltip(marker, p)); marker.addEventListener('pointerleave', () => { tooltip.hidden = true; });
       marker.addEventListener('focus', () => showTooltip(marker, p)); marker.addEventListener('blur', () => { tooltip.hidden = true; });
       marker.addEventListener('click', () => showDetail(p)); marker.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); showDetail(p); } });
-      group.append(marker);
+      position.append(marker); group.append(position);
     });
     svg.append(group);
   }
@@ -66,7 +63,7 @@
   }
   function renderRecords() {
     const list = $('saved-places'); list.replaceChildren();
-    if (!records.length && !manual.length) { status.textContent = mode === 'popular' ? '공개 기록이 3명 이상인 장소가 아직 없어요.' : mode === 'anonymous' ? '이 지역에 공개된 장소가 아직 없어요.' : '이 지역에 저장한 장소가 없어요.'; return; }
+    if (!records.length) { status.textContent = mode === 'popular' ? '공개 기록이 3명 이상인 장소가 아직 없어요.' : mode === 'anonymous' ? '이 지역에 공개된 장소가 아직 없어요.' : '이 지역에 저장한 장소가 없어요.'; return; }
     const namedRecords = records.filter(record => record.alias && record.alias.trim());
     status.textContent = mode === 'popular' ? '공개 저장 사용자 수 기준입니다.' : '';
     namedRecords.forEach(record => {
@@ -85,14 +82,12 @@
     try {
       const params = new URLSearchParams({ sido: region.sido, district: region.district, mode });
       const data = await api(`/api/places/records?${params}`); if (version !== generation) return;
-      records = data.records || [];
-      if (mode === 'mine') { const own = await api(`/api/places/manual?${params}`); if (version !== generation) return; manual = (own.places || []).map(p => ({ id: p.id, name: p.name, address: p.address, category: p.category, categoryName: ({restaurant:'음식점',cafe:'카페',stay:'숙박',other:'기타'})[p.category], x: p.longitude, y: p.latitude, source: 'manual' })); } else manual = [];
-      renderRecords();
-    } catch (error) { if (version !== generation) return; records = []; manual = []; $('saved-places').replaceChildren(); status.textContent = error.message; }
+      records = data.records || []; renderRecords();
+    } catch (error) { if (version !== generation) return; records = []; $('saved-places').replaceChildren(); status.textContent = error.message; }
     renderMarkers();
   }
-  document.addEventListener('place-region-change', event => { region = event.detail; selectingPoint = false; $('manual-start').textContent = '지도에서 직접 기록'; live = sessionPlaces.get(regionKey(region)) || []; manual = []; records = []; loadRecords(); });
-  document.addEventListener('place-auth-change', event => { if (!event.detail.signedIn) { sessionPlaces.clear(); live = []; manual = []; selectingPoint = false; } if (region) loadRecords(); });
+  document.addEventListener('place-region-change', event => { region = event.detail; live = sessionPlaces.get(regionKey(region)) || []; records = []; loadRecords(); });
+  document.addEventListener('place-auth-change', event => { if (!event.detail.signedIn) { sessionPlaces.clear(); live = []; } if (region) loadRecords(); });
   legend.addEventListener('change', renderMarkers);
   document.querySelectorAll('.place-view').forEach(button => button.addEventListener('click', () => {
     mode = button.dataset.view;
@@ -107,34 +102,6 @@
     const mark = document.createElement('mark'); mark.textContent = name.slice(index, index + query.length);
     element.append(document.createTextNode(name.slice(0, index)), mark, document.createTextNode(name.slice(index + query.length)));
   }
-  $('manual-start').addEventListener('click', async () => {
-    try {
-      const data = await api('/api/auth/me'); if (!data.user) { $('auth-open').click(); return; }
-      selectingPoint = !selectingPoint;
-      $('manual-start').textContent = selectingPoint ? '위치 선택 취소' : '지도에서 직접 기록';
-      status.textContent = selectingPoint ? '지도에서 직접 확인한 위치를 눌러 주세요.' : '';
-    } catch (error) { status.textContent = error.message; }
-  });
-  svg.addEventListener('click', event => {
-    if (!selectingPoint || !region || event.target.closest('.place-marker')) return;
-    const matrix = svg.getScreenCTM(); if (!matrix) return;
-    const position = svg.createSVGPoint(); position.x = event.clientX; position.y = event.clientY;
-    const projected = position.matrixTransform(matrix.inverse());
-    const longitude = projected.x / Math.cos(36.5 * Math.PI / 180), latitude = -projected.y;
-    if (!isInRegion(longitude, latitude, region.shapes)) { status.textContent = '선택한 지역 안의 위치를 눌러 주세요.'; return; }
-    point = { longitude, latitude }; selectingPoint = false; $('manual-start').textContent = '지도에서 직접 기록';
-    $('manual-form').reset(); $('manual-error').textContent = ''; $('manual-dialog').showModal();
-  });
-  $('manual-close').addEventListener('click', () => $('manual-dialog').close());
-  $('manual-form').addEventListener('submit', async event => {
-    event.preventDefault(); if (!region || !point) return;
-    const button = event.currentTarget.querySelector('button[type="submit"]'); button.disabled = true;
-    try {
-      const input = Object.fromEntries(new FormData(event.currentTarget));
-      await api('/api/places/manual', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sido: region.sido, district: region.district, ...input, ...point }) });
-      $('manual-dialog').close(); mode = 'mine'; document.querySelector('[data-view="mine"]').click();
-    } catch (error) { $('manual-error').textContent = error.message; } finally { button.disabled = false; }
-  });
   $('place-search-open').addEventListener('click', async () => {
     try {
       const data = await api('/api/auth/me'); if (!data.user) { $('auth-open').click(); return; }
