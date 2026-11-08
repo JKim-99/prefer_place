@@ -67,6 +67,14 @@
     document.querySelectorAll('.place-view').forEach(item => { const active = item === button; item.classList.toggle('is-active', active); item.setAttribute('aria-pressed', String(active)); });
     loadRecords();
   }));
+  let searchTimer, searchVersion = 0, searchAbort = null;
+  function cancelSearch() { clearTimeout(searchTimer); searchVersion++; if (searchAbort) searchAbort.abort(); searchAbort = null; }
+  function highlightName(element, name, query) {
+    const index = name.toLocaleLowerCase('ko').indexOf(query.toLocaleLowerCase('ko'));
+    if (index < 0) { element.textContent = name; return; }
+    const mark = document.createElement('mark'); mark.textContent = name.slice(index, index + query.length);
+    element.append(document.createTextNode(name.slice(0, index)), mark, document.createTextNode(name.slice(index + query.length)));
+  }
   $('place-search-open').addEventListener('click', async () => {
     try {
       const data = await api('/api/auth/me'); if (!data.user) { $('auth-open').click(); return; }
@@ -74,30 +82,42 @@
     } catch (error) { status.textContent = error.message; }
   });
   $('place-dialog-close').addEventListener('click', () => dialog.close());
-  $('place-search-form').addEventListener('submit', async event => {
-    event.preventDefault(); if (!region) return; const requestedRegion = region;
+  dialog.addEventListener('close', cancelSearch);
+  const queryInput = $('place-query');
+  let composing = false;
+  function queueSearch() {
+    cancelSearch(); results.replaceChildren();
+    if (queryInput.value.trim().length < 2) { searchStatus.textContent = '두 글자 이상 입력해 주세요.'; return; }
+    searchTimer = setTimeout(runSearch, 500);
+  }
+  queryInput.addEventListener('compositionstart', () => { composing = true; cancelSearch(); });
+  queryInput.addEventListener('compositionend', () => { composing = false; queueSearch(); });
+  queryInput.addEventListener('input', event => { if (!composing && !event.isComposing) queueSearch(); });
+  $('place-search-form').addEventListener('submit', event => { event.preventDefault(); cancelSearch(); if (queryInput.value.trim().length >= 2) runSearch(); });
+  async function runSearch() {
+    if (!region || !dialog.open) return; const requestedRegion = region; const query = queryInput.value.trim();
+    const version = ++searchVersion; searchAbort = new AbortController();
     results.replaceChildren(); searchStatus.textContent = '검색 중...';
     try {
-      const params = new URLSearchParams({ q: `${region.sido} ${region.district} ${$('place-query').value.trim()}` });
-      const data = await api(`/api/places/search?${params}`); if (requestedRegion !== region) return;
+      const params = new URLSearchParams({ q: `${region.sido} ${region.district} ${query}` });
+      const data = await api(`/api/places/search?${params}`, { signal: searchAbort.signal }); if (requestedRegion !== region || version !== searchVersion || queryInput.value.trim() !== query) return;
       const places = data.places.filter(p => Number.isFinite(Number(p.x)) && Number.isFinite(Number(p.y)) && isInRegion(Number(p.x), Number(p.y), region.shapes));
-      searchStatus.textContent = places.length ? '카카오맵 검색 결과입니다. 별칭은 직접 작성해 주세요.' : '이 지역에서 검색 결과를 찾지 못했어요.';
+      searchStatus.textContent = places.length ? '카카오맵 검색 결과입니다. 별칭은 선택 사항입니다.' : '이 지역에서 검색 결과를 찾지 못했어요.';
       places.forEach(p => {
-        const li = document.createElement('li'); const title = document.createElement('strong'); title.textContent = `${icons[category(p.category)]} ${p.name}`;
+        const li = document.createElement('li'); const title = document.createElement('strong'); title.append(document.createTextNode(`${icons[category(p.category)]} `)); const name = document.createElement('span'); highlightName(name, p.name, query); title.append(name);
         const detail = document.createElement('p'); detail.textContent = [p.categoryName, p.address].filter(Boolean).join(' · ');
         const form = document.createElement('form'); form.className = 'place-save-form';
-        const alias = document.createElement('input'); alias.required = true; alias.maxLength = 50; alias.placeholder = '직접 지은 별칭'; alias.setAttribute('aria-label', `${p.name}의 별칭`);
-        const label = document.createElement('label'), checkbox = document.createElement('input'); checkbox.type = 'checkbox'; label.append(checkbox, document.createTextNode(' 이 기록 공개'));
-        const save = document.createElement('button'); save.type = 'submit'; save.textContent = '추가'; form.append(alias, label, save);
+        const alias = document.createElement('input'); alias.maxLength = 50; alias.placeholder = '별칭 (선택 사항)'; alias.setAttribute('aria-label', `${p.name}의 별칭`);
+        const save = document.createElement('button'); save.type = 'submit'; save.textContent = '추가'; form.append(alias, save);
         form.addEventListener('submit', async e => {
           e.preventDefault(); save.disabled = true;
           try {
-            await api('/api/places/records', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ placeId: p.id, sido: region.sido, district: region.district, alias: alias.value, isPublic: checkbox.checked }) });
+            await api('/api/places/records', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ placeId: p.id, sido: region.sido, district: region.district, alias: alias.value, isPublic: false }) });
             live = live.filter(existing => existing.id !== p.id); live.push(p); mode = 'mine'; document.querySelector('[data-view="mine"]').click(); dialog.close();
           } catch (error) { searchStatus.textContent = error.message; } finally { save.disabled = false; }
         });
         li.append(title, detail, form); results.append(li);
       });
-    } catch (error) { searchStatus.textContent = error.message; }
-  });
+    } catch (error) { if (error.name !== 'AbortError' && version === searchVersion) searchStatus.textContent = error.message; }
+  }
 })();

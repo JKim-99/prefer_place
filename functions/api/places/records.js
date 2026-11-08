@@ -24,8 +24,8 @@ export async function onRequestPost({ request, env }) {
   const body = await readBody(request); if (!body) return json({ error: '올바른 요청이 아닙니다.' }, 400);
   const user = await currentUser(request, env.DB); if (!user) return json({ error: '로그인이 필요합니다.' }, 401);
   const { placeId, sido, district, alias, isPublic } = body;
-  if (!/^\d{1,30}$/.test(placeId || '') || typeof sido !== 'string' || !sido.trim() || sido.length > 40 || typeof district !== 'string' || !district.trim() || district.length > 40 || typeof alias !== 'string' || alias.trim().length < 1 || alias.length > 50 || typeof isPublic !== 'boolean') return json({ error: '장소 정보를 확인해 주세요.' }, 400);
-  await env.DB.prepare('INSERT INTO place_records (user_id, place_id, region_sido, region_district, alias, is_public, created_at) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(user_id, place_id) DO UPDATE SET region_sido=excluded.region_sido, region_district=excluded.region_district, alias=excluded.alias, is_public=excluded.is_public').bind(user.id, placeId, sido, district, alias.trim(), isPublic ? 1 : 0, Math.floor(Date.now()/1000)).run();
+  if (!/^\d{1,30}$/.test(placeId || '') || typeof sido !== 'string' || !sido.trim() || sido.length > 40 || typeof district !== 'string' || !district.trim() || district.length > 40 || typeof alias !== 'string' || alias.length > 50 || typeof isPublic !== 'boolean') return json({ error: '장소 정보를 확인해 주세요.' }, 400);
+  await env.DB.prepare('INSERT INTO place_records (user_id, place_id, region_sido, region_district, alias, is_public, created_at) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(user_id, place_id) DO UPDATE SET region_sido=excluded.region_sido, region_district=excluded.region_district, alias=excluded.alias').bind(user.id, placeId, sido, district, alias.trim(), isPublic ? 1 : 0, Math.floor(Date.now()/1000)).run();
   return json({ ok: true });
 }
 export async function onRequestDelete({ request, env }) {
