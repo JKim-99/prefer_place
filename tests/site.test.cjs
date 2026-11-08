@@ -11,6 +11,18 @@ test('homepage provides a manual region picker and a map', () => {
   assert.doesNotMatch(html, /navigator\.geolocation/);
 });
 
+test('map detail styling follows the homepage palette without removing map controls', () => {
+  const css = readFileSync(resolve(__dirname, '../public/assets/css/styles.css'), 'utf8');
+  for (const expected of ['#region-map .region-other', '#region-map .region-side', '#region-map .region-selected', '#region-map .neighborhood-border', '#region-map #neighborhood-labels text']) {
+    assert.ok(css.includes(expected), `missing map surface style: ${expected}`);
+  }
+  for (const expected of ['id="zoom-in"', 'id="zoom-out"', 'id="zoom-reset"', 'id="region-map"']) assert.ok(html.includes(expected), `missing existing map control: ${expected}`);
+  const app = readFileSync(resolve(__dirname, '../public/assets/js/app.js'), 'utf8');
+  assert.match(app, /svg\.addEventListener\('wheel'/);
+  assert.match(app, /svg\.addEventListener\('pointerdown'/);
+  assert.match(app, /id = 'neighborhood-borders'/);
+});
+
 test('boundary data covers the source dataset and the requested examples', () => {
   const provinces = new Set(geo.features.map(f => f.properties.sidonm));
   assert.equal(provinces.size, 16);
