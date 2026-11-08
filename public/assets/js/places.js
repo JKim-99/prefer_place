@@ -88,6 +88,7 @@
   }
   document.addEventListener('place-region-change', event => { region = event.detail; live = sessionPlaces.get(regionKey(region)) || []; records = []; loadRecords(); });
   document.addEventListener('place-auth-change', event => { if (!event.detail.signedIn) { sessionPlaces.clear(); live = []; } if (region) loadRecords(); });
+  document.addEventListener('place-records-change', () => { if (region) loadRecords(); });
   legend.addEventListener('change', renderMarkers);
   document.querySelectorAll('.place-view').forEach(button => button.addEventListener('click', () => {
     mode = button.dataset.view;
@@ -138,7 +139,7 @@
         form.addEventListener('submit', async e => {
           e.preventDefault(); save.disabled = true;
           try {
-            await api('/api/places/records', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ placeId: p.id, sido: region.sido, district: region.district, alias: '', isPublic: false }) });
+            await api('/api/places/records', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ placeId: p.id, sido: region.sido, district: region.district, alias: '', isPublic: false, category: category(p.category) }) });
             live = live.filter(existing => existing.id !== p.id); live.push(p); sessionPlaces.set(regionKey(region), live); mode = 'mine'; document.querySelector('[data-view="mine"]').click(); dialog.close();
           } catch (error) { searchStatus.textContent = error.message; } finally { save.disabled = false; }
         });
