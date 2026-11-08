@@ -43,8 +43,9 @@
     live.filter(p => selectedCategories().has(category(p.category))).forEach(p => {
       const marker = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       marker.setAttribute('class', 'place-marker'); marker.setAttribute('tabindex', '0'); marker.setAttribute('role', 'button'); marker.setAttribute('aria-label', `${p.name} 장소 정보 보기`);
+      marker.setAttribute('transform', `translate(${Number(p.x) * Math.cos(36.5*Math.PI/180)} ${-Number(p.y)})`);
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      text.setAttribute('x', Number(p.x) * Math.cos(36.5*Math.PI/180)); text.setAttribute('y', -Number(p.y));
+      text.setAttribute('class', 'marker-icon'); text.setAttribute('x', '0'); text.setAttribute('y', '0');
       text.setAttribute('font-size', size); text.setAttribute('text-anchor', 'middle'); text.setAttribute('dominant-baseline', 'central'); text.textContent = icons[category(p.category)];
       marker.append(text); marker.addEventListener('pointerenter', () => showTooltip(marker, p)); marker.addEventListener('pointerleave', () => { tooltip.hidden = true; });
       marker.addEventListener('focus', () => showTooltip(marker, p)); marker.addEventListener('blur', () => { tooltip.hidden = true; });
@@ -60,11 +61,12 @@
   function renderRecords() {
     const list = $('saved-places'); list.replaceChildren();
     if (!records.length) { status.textContent = mode === 'popular' ? '공개 기록이 3명 이상인 장소가 아직 없어요.' : mode === 'anonymous' ? '이 지역에 공개된 장소가 아직 없어요.' : '이 지역에 저장한 장소가 없어요.'; return; }
-    status.textContent = (mode === 'popular' ? '방문 횟수가 아닌 공개 저장 사용자 수 기준입니다. ' : '') + '저장된 별칭과 카카오맵 링크입니다. 좌표는 저장할 수 없어 지도의 마커는 현재 검색 세션에서만 표시됩니다.';
-    records.forEach(record => {
+    const namedRecords = records.filter(record => record.alias && record.alias.trim());
+    status.textContent = (mode === 'popular' ? '방문 횟수가 아닌 공개 저장 사용자 수 기준입니다. ' : '') + '장소 기록이 저장되어 있습니다. 마커는 현재 검색 세션에서만 표시됩니다.';
+    namedRecords.forEach(record => {
       const li = document.createElement('li'), link = document.createElement('a');
       link.href = `https://place.map.kakao.com/${record.place_id}`; link.target = '_blank'; link.rel = 'noopener noreferrer';
-      link.textContent = record.alias || `카카오 장소 ${record.place_id}${record.count ? ` · ${record.count}명` : ''}`; li.append(link);
+      link.textContent = record.alias; li.append(link);
       if (mode === 'mine') {
         const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = '삭제';
         remove.addEventListener('click', async () => { try { await api(`/api/places/records?id=${encodeURIComponent(record.place_id)}`, { method: 'DELETE' }); live = live.filter(p => p.id !== record.place_id); renderMarkers(); await loadRecords(); } catch (error) { status.textContent = error.message; } }); li.append(remove);
