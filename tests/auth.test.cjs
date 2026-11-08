@@ -11,6 +11,7 @@ test('password hashes use unique salts and verify correct passwords', async () =
   const first = await a.hashPassword('correct-password');
   const second = await a.hashPassword('correct-password');
   assert.notEqual(first, second);
+  assert.equal(Number(first.split('$')[1]), 100000);
   assert.equal(await a.verifyPassword('correct-password', first), true);
   assert.equal(await a.verifyPassword('wrong-password', first), false);
   assert.equal(await a.verifyPassword('correct-password', 'invalid'), false);
