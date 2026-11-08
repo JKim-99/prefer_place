@@ -45,7 +45,13 @@
     svg.append(group);
   }
   async function api(url, options) {
-    const response = await fetch(url, options); let data; try { data = await response.json(); } catch { throw new Error('서버 응답을 확인할 수 없습니다.'); }
+    const response = await fetch(url, options); let data;
+    try { data = await response.json(); } catch {
+      if (response.redirected || response.headers.get('content-type')?.includes('text/html')) {
+        throw new Error('서버가 API 대신 사이트 페이지를 반환했습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.');
+      }
+      throw new Error('서버 응답을 확인할 수 없습니다.');
+    }
     if (!response.ok) throw new Error(data.error || '요청을 처리하지 못했습니다.'); return data;
   }
   function renderRecords() {
@@ -72,8 +78,8 @@
     } catch (error) { if (version !== generation) return; records = []; $('saved-places').replaceChildren(); status.textContent = error.message; }
     renderMarkers();
   }
-  document.addEventListener('place-region-change', event => { region = event.detail; live = []; records = []; loadRecords(); });
   document.addEventListener('place-auth-change', event => { if (!event.detail.signedIn) live = []; if (region) loadRecords(); });
+  document.addEventListener('place-region-change', event => { region = event.detail; live = []; records = []; loadRecords(); });
   document.addEventListener('place-records-change', () => { if (region) loadRecords(); });
   legend.addEventListener('change', renderMarkers);
   document.querySelectorAll('.place-view').forEach(button => button.addEventListener('click', () => {
@@ -89,11 +95,10 @@
     const mark = document.createElement('mark'); mark.textContent = name.slice(index, index + query.length);
     element.append(document.createTextNode(name.slice(0, index)), mark, document.createTextNode(name.slice(index + query.length)));
   }
-  $('place-search-open').addEventListener('click', async () => {
-    try {
-      const data = await api('/api/auth/me'); if (!data.user) { $('auth-open').click(); return; }
-      searchStatus.textContent = ''; results.replaceChildren(); $('place-query').value = ''; dialog.showModal();
-    } catch (error) { status.textContent = error.message; }
+  $('place-search-open').addEventListener('click', () => {
+    searchStatus.textContent = ''; results.replaceChildren(); $('place-query').value = '';
+    if (window.placeCurrentUser === null) { $('auth-open').click(); return; }
+    dialog.showModal(); $('place-query').focus();
   });
   $('place-dialog-close').addEventListener('click', () => dialog.close());
   dialog.addEventListener('close', cancelSearch);
