@@ -8,7 +8,7 @@
   const svg = $('region-map');
   const NS = 'http://www.w3.org/2000/svg';
   let features = [], sido = '', district = '', chosen = null;
-  let currentView = null, animationFrame = null, featured = null, pressedFeature = null;
+  let currentView = null, baseView = null, animationFrame = null, featured = null, pressedFeature = null;
   $('open-picker').disabled = true; $('change-location').disabled = true;
 
   // 일반구가 있는 시는 시 단위로 선택하고 모든 구를 함께 표시합니다.
@@ -72,6 +72,7 @@
     const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
     const pad = Math.max(maxX - minX, maxY - minY) * .1;
     const targetView = [minX-pad, minY-pad, maxX-minX+2*pad, maxY-minY+2*pad];
+    baseView = targetView;
     const pathFor = (f) => rings(f.geometry).map((ring) => ring.map((p, i) => `${i ? 'L' : 'M'}${xy(p).join(' ')}`).join(' ') + ' Z').join(' ');
     const defs = document.createElementNS(NS, 'defs');
     const gradient = document.createElementNS(NS, 'linearGradient');
@@ -126,6 +127,20 @@
     }
     animationFrame = requestAnimationFrame(step);
   }
+  function zoomMap(factor) {
+    if (!currentView || !baseView) return;
+    if (animationFrame !== null) { cancelAnimationFrame(animationFrame); animationFrame = null; }
+    const ratio = Math.max(.2, Math.min(4, currentView[2] * factor / baseView[2]));
+    const width = baseView[2] * ratio, height = baseView[3] * ratio;
+    const centerX = currentView[0] + currentView[2] / 2, centerY = currentView[1] + currentView[3] / 2;
+    currentView = [centerX - width / 2, centerY - height / 2, width, height];
+    svg.setAttribute('viewBox', currentView.join(' '));
+    $('marker-tooltip').hidden = true;
+  }
+  $('zoom-in').addEventListener('click', () => zoomMap(.8));
+  $('zoom-out').addEventListener('click', () => zoomMap(1.25));
+  $('zoom-reset').addEventListener('click', () => { if (baseView) animateView(baseView); });
+  svg.addEventListener('wheel', event => { if (!currentView) return; event.preventDefault(); zoomMap(event.deltaY < 0 ? .85 : 1 / .85); }, { passive: false });
   fetch('assets/data/sigungu.geojson').then((response) => { if (!response.ok) throw new Error('data'); return response.json(); }).then((data) => {
     features = data.features.filter((f) => f.properties?.sidonm && f.properties?.sggnm && f.geometry);
     $('open-picker').disabled = false; $('change-location').disabled = false;

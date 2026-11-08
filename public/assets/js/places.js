@@ -18,16 +18,38 @@
     }
     return shapes.some(f => (f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates).some(polygon => inRing(polygon[0]) && !polygon.slice(1).some(inRing)));
   }
+  const tooltip = $('marker-tooltip'), detail = $('place-detail'), stage = $('map-stage');
+  function hideInfo() { tooltip.hidden = true; detail.hidden = true; }
+  function showTooltip(marker, place) {
+    const box = marker.getBoundingClientRect(), container = stage.getBoundingClientRect();
+    tooltip.textContent = place.name; tooltip.hidden = false;
+    const half = tooltip.offsetWidth / 2;
+    tooltip.style.left = `${Math.max(half + 8, Math.min(container.width - half - 8, box.left - container.left + box.width / 2))}px`;
+    tooltip.style.top = `${Math.max(8, box.top - container.top - tooltip.offsetHeight - 8)}px`;
+  }
+  function showDetail(place) {
+    tooltip.hidden = true; $('place-detail-name').textContent = place.name;
+    $('place-detail-category').textContent = place.categoryName || '분류 정보 없음';
+    $('place-detail-address').textContent = place.address || '주소 정보 없음';
+    $('place-detail-link').href = `https://place.map.kakao.com/${encodeURIComponent(place.id)}`;
+    detail.hidden = false;
+  }
+  $('place-detail-close').addEventListener('click', hideInfo);
   function renderMarkers() {
-    svg.querySelector('#place-markers')?.remove();
+    svg.querySelector('#place-markers')?.remove(); hideInfo();
     if (!region || !live.length || mode !== 'mine') return;
     const vb = svg.viewBox.baseVal, size = Math.max(vb.width, vb.height) * .045;
     const group = document.createElementNS('http://www.w3.org/2000/svg', 'g'); group.id = 'place-markers';
     live.filter(p => selectedCategories().has(category(p.category))).forEach(p => {
+      const marker = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      marker.setAttribute('class', 'place-marker'); marker.setAttribute('tabindex', '0'); marker.setAttribute('role', 'button'); marker.setAttribute('aria-label', `${p.name} 장소 정보 보기`);
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('x', Number(p.x) * Math.cos(36.5*Math.PI/180)); text.setAttribute('y', -Number(p.y));
-      text.setAttribute('font-size', size); text.setAttribute('text-anchor', 'middle'); text.setAttribute('dominant-baseline', 'central');
-      const title = document.createElementNS('http://www.w3.org/2000/svg', 'title'); title.textContent = p.name; text.append(title, document.createTextNode(icons[category(p.category)])); group.append(text);
+      text.setAttribute('font-size', size); text.setAttribute('text-anchor', 'middle'); text.setAttribute('dominant-baseline', 'central'); text.textContent = icons[category(p.category)];
+      marker.append(text); marker.addEventListener('pointerenter', () => showTooltip(marker, p)); marker.addEventListener('pointerleave', () => { tooltip.hidden = true; });
+      marker.addEventListener('focus', () => showTooltip(marker, p)); marker.addEventListener('blur', () => { tooltip.hidden = true; });
+      marker.addEventListener('click', () => showDetail(p)); marker.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); showDetail(p); } });
+      group.append(marker);
     });
     svg.append(group);
   }
@@ -102,17 +124,16 @@
       const params = new URLSearchParams({ q: `${region.sido} ${region.district} ${query}` });
       const data = await api(`/api/places/search?${params}`, { signal: searchAbort.signal }); if (requestedRegion !== region || version !== searchVersion || queryInput.value.trim() !== query) return;
       const places = data.places.filter(p => Number.isFinite(Number(p.x)) && Number.isFinite(Number(p.y)) && isInRegion(Number(p.x), Number(p.y), region.shapes));
-      searchStatus.textContent = places.length ? '카카오맵 검색 결과입니다. 별칭은 선택 사항입니다.' : '이 지역에서 검색 결과를 찾지 못했어요.';
+      searchStatus.textContent = places.length ? '' : '이 지역에서 검색 결과를 찾지 못했어요.';
       places.forEach(p => {
         const li = document.createElement('li'); const title = document.createElement('strong'); title.append(document.createTextNode(`${icons[category(p.category)]} `)); const name = document.createElement('span'); highlightName(name, p.name, query); title.append(name);
         const detail = document.createElement('p'); detail.textContent = [p.categoryName, p.address].filter(Boolean).join(' · ');
         const form = document.createElement('form'); form.className = 'place-save-form';
-        const alias = document.createElement('input'); alias.maxLength = 50; alias.placeholder = '별칭 (선택 사항)'; alias.setAttribute('aria-label', `${p.name}의 별칭`);
-        const save = document.createElement('button'); save.type = 'submit'; save.textContent = '추가'; form.append(alias, save);
+        const save = document.createElement('button'); save.type = 'submit'; save.textContent = '추가'; form.append(save);
         form.addEventListener('submit', async e => {
           e.preventDefault(); save.disabled = true;
           try {
-            await api('/api/places/records', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ placeId: p.id, sido: region.sido, district: region.district, alias: alias.value, isPublic: false }) });
+            await api('/api/places/records', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ placeId: p.id, sido: region.sido, district: region.district, alias: '', isPublic: false }) });
             live = live.filter(existing => existing.id !== p.id); live.push(p); mode = 'mine'; document.querySelector('[data-view="mine"]').click(); dialog.close();
           } catch (error) { searchStatus.textContent = error.message; } finally { save.disabled = false; }
         });
