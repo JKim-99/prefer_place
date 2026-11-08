@@ -4,6 +4,8 @@
   const dialog = $('place-dialog'), searchStatus = $('place-search-status'), results = $('place-search-results');
   const legend = document.querySelector('.place-legend');
   let region = null, mode = 'mine', live = [], records = [], generation = 0;
+  const sessionPlaces = new Map();
+  const regionKey = value => JSON.stringify([value.sido, value.district]);
   const icons = { restaurant: '🍴', cafe: '☕', stay: '🛏', other: '📍' };
   const category = code => ({ FD6: 'restaurant', CE7: 'cafe', AD5: 'stay' }[code] || 'other');
   const selectedCategories = () => new Set([...legend.querySelectorAll('input:checked')].map(i => i.value));
@@ -62,14 +64,14 @@
     const list = $('saved-places'); list.replaceChildren();
     if (!records.length) { status.textContent = mode === 'popular' ? '공개 기록이 3명 이상인 장소가 아직 없어요.' : mode === 'anonymous' ? '이 지역에 공개된 장소가 아직 없어요.' : '이 지역에 저장한 장소가 없어요.'; return; }
     const namedRecords = records.filter(record => record.alias && record.alias.trim());
-    status.textContent = (mode === 'popular' ? '방문 횟수가 아닌 공개 저장 사용자 수 기준입니다. ' : '') + '장소 기록이 저장되어 있습니다. 마커는 현재 검색 세션에서만 표시됩니다.';
+    status.textContent = mode === 'popular' ? '공개 저장 사용자 수 기준입니다.' : '';
     namedRecords.forEach(record => {
       const li = document.createElement('li'), link = document.createElement('a');
       link.href = `https://place.map.kakao.com/${record.place_id}`; link.target = '_blank'; link.rel = 'noopener noreferrer';
       link.textContent = record.alias; li.append(link);
       if (mode === 'mine') {
         const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = '삭제';
-        remove.addEventListener('click', async () => { try { await api(`/api/places/records?id=${encodeURIComponent(record.place_id)}`, { method: 'DELETE' }); live = live.filter(p => p.id !== record.place_id); renderMarkers(); await loadRecords(); } catch (error) { status.textContent = error.message; } }); li.append(remove);
+        remove.addEventListener('click', async () => { try { await api(`/api/places/records?id=${encodeURIComponent(record.place_id)}`, { method: 'DELETE' }); live = live.filter(p => p.id !== record.place_id); sessionPlaces.set(regionKey(region), live); renderMarkers(); await loadRecords(); } catch (error) { status.textContent = error.message; } }); li.append(remove);
       }
       list.append(li);
     });
@@ -83,8 +85,8 @@
     } catch (error) { if (version !== generation) return; records = []; $('saved-places').replaceChildren(); status.textContent = error.message; }
     renderMarkers();
   }
-  document.addEventListener('place-region-change', event => { region = event.detail; live = []; records = []; loadRecords(); });
-  document.addEventListener('place-auth-change', event => { if (!event.detail.signedIn) live = []; if (region) loadRecords(); });
+  document.addEventListener('place-region-change', event => { region = event.detail; live = sessionPlaces.get(regionKey(region)) || []; records = []; loadRecords(); });
+  document.addEventListener('place-auth-change', event => { if (!event.detail.signedIn) { sessionPlaces.clear(); live = []; } if (region) loadRecords(); });
   legend.addEventListener('change', renderMarkers);
   document.querySelectorAll('.place-view').forEach(button => button.addEventListener('click', () => {
     mode = button.dataset.view;
@@ -136,7 +138,7 @@
           e.preventDefault(); save.disabled = true;
           try {
             await api('/api/places/records', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ placeId: p.id, sido: region.sido, district: region.district, alias: '', isPublic: false }) });
-            live = live.filter(existing => existing.id !== p.id); live.push(p); mode = 'mine'; document.querySelector('[data-view="mine"]').click(); dialog.close();
+            live = live.filter(existing => existing.id !== p.id); live.push(p); sessionPlaces.set(regionKey(region), live); mode = 'mine'; document.querySelector('[data-view="mine"]').click(); dialog.close();
           } catch (error) { searchStatus.textContent = error.message; } finally { save.disabled = false; }
         });
         li.append(title, detail, form); results.append(li);
