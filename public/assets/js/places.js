@@ -13,8 +13,8 @@
     const box = marker.getBoundingClientRect(), container = stage.getBoundingClientRect();
     tooltip.textContent = place.name; tooltip.hidden = false;
     const half = tooltip.offsetWidth / 2;
-    tooltip.style.left = `${Math.max(half + 8, Math.min(container.width - half - 8, box.left - container.left + box.width / 2))}px`;
-    tooltip.style.top = `${Math.max(8, box.top - container.top - tooltip.offsetHeight - 8)}px`;
+    tooltip.style.left = `${Math.max(half + 8, Math.min(container.width - half - 8, box.x - container.x + box.width / 2))}px`;
+    tooltip.style.top = `${Math.max(8, box.y - container.y - tooltip.offsetHeight - 8)}px`;
   }
   function showDetail(place) {
     tooltip.hidden = true; $('place-detail-name').textContent = place.name;
@@ -31,15 +31,20 @@
     const group = document.createElementNS('http://www.w3.org/2000/svg', 'g'); group.id = 'place-markers';
     live.filter(p => selectedCategories().has(category(p.category))).forEach(p => {
       const position = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      position.setAttribute('class', 'place-marker-position');
       position.setAttribute('transform', `translate(${Number(p.x) * Math.cos(36.5*Math.PI/180)} ${-Number(p.y)})`);
       const marker = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      marker.setAttribute('class', 'place-marker'); marker.setAttribute('tabindex', '0'); marker.setAttribute('role', 'button'); marker.setAttribute('aria-label', `${p.name} 장소 정보 보기`);
+      marker.setAttribute('class', 'place-marker');
+      const hit = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      hit.setAttribute('class', 'place-marker-hit'); hit.setAttribute('cx', '0'); hit.setAttribute('cy', '0'); hit.setAttribute('r', String(size * .46));
+      hit.setAttribute('tabindex', '0'); hit.setAttribute('role', 'button'); hit.setAttribute('aria-label', `${p.name} 장소 정보 보기`); hit.setAttribute('fill', 'transparent');
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('class', 'marker-icon'); text.setAttribute('x', '0'); text.setAttribute('y', '0');
-      text.setAttribute('font-size', size); text.setAttribute('text-anchor', 'middle'); text.setAttribute('dominant-baseline', 'central'); text.textContent = icons[category(p.category)];
-      marker.append(text); marker.addEventListener('pointerenter', () => showTooltip(marker, p)); marker.addEventListener('pointerleave', () => { tooltip.hidden = true; });
-      marker.addEventListener('focus', () => showTooltip(marker, p)); marker.addEventListener('blur', () => { tooltip.hidden = true; });
-      marker.addEventListener('click', () => showDetail(p)); marker.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); showDetail(p); } });
+      text.setAttribute('font-size', size); text.setAttribute('text-anchor', 'middle'); text.setAttribute('dominant-baseline', 'central'); text.setAttribute('pointer-events', 'none'); text.textContent = icons[category(p.category)];
+      marker.append(hit, text);
+      hit.addEventListener('pointerenter', () => showTooltip(hit, p)); hit.addEventListener('pointerleave', () => { tooltip.hidden = true; });
+      hit.addEventListener('focus', () => showTooltip(hit, p)); hit.addEventListener('blur', () => { tooltip.hidden = true; });
+      hit.addEventListener('click', () => showDetail(p)); hit.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); showDetail(p); } });
       position.append(marker); group.append(position);
     });
     svg.append(group);

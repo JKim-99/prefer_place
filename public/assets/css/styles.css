@@ -85,11 +85,23 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 @media(max-width:760px){.featured-map{right:4%;width:92%;height:52%;top:7%}}
 
 /* Apply only surface styling: the SVG polygons, borders, gestures and viewBox remain functional. */
-#region-map .region-other{fill:#dce6e2;stroke:#cbd8d3;stroke-width:1.2px;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
-#region-map .region-side{fill:#7899a2;stroke:#7899a2;stroke-width:1px;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
-#region-map .region-selected{fill:url(#selected-gradient);stroke:#88a9b3;stroke-width:4px;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke;paint-order:stroke fill;filter:drop-shadow(0 2px 0 #7899a2) drop-shadow(0 5px 7px #49687344)}
-#region-map .neighborhood-border{stroke:#829da3;stroke-width:1.25px;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
-#region-map .neighborhood-selected{stroke:#708d95;stroke-width:1.35px}
-#region-map .neighborhood-other{stroke:#c0d0cb;stroke-width:1px}
-#region-map #neighborhood-labels text{fill:#344d52;stroke:#e4ebe6;stroke-width:3px;stroke-linejoin:round;paint-order:stroke fill;font-weight:600}
-@media(max-width:760px){#region-map .region-selected{stroke-width:3px}#region-map .neighborhood-border{stroke-width:1.15px}}
+#region-map .region-other{fill:#dce5e1;stroke:#c4d1cc;stroke-width:1.1px;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+#region-map .region-side{fill:#819fa7;stroke:#819fa7;stroke-width:1px;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+#region-map .region-selected{fill:url(#selected-gradient);stroke:#9ebbc7;stroke-width:5px;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke;paint-order:stroke fill;filter:drop-shadow(0 2px 0 #89a8b2) drop-shadow(0 4px 0 #829fa9) drop-shadow(0 9px 8px #7c979b55)}
+#region-map .neighborhood-border{stroke:#8ea9ae;stroke-width:1.1px;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+#region-map .neighborhood-selected{fill:#aec8c9;stroke:#7f9fa7;stroke-opacity:.75}
+#region-map .neighborhood-other{fill:#dce5e1;stroke:#c4d1cc;stroke-opacity:.9}
+#region-map #neighborhood-labels text{fill:#354e53;stroke:#e7efeb;stroke-width:3px;stroke-linejoin:round;paint-order:stroke fill;font-weight:650}
+#region-map #region-overview-background .region-other{fill:#dce5e1;stroke:#c4d1cc;stroke-width:1px}
+#region-map #region-overview-depth .region-side{fill:#819fa7;stroke:#819fa7}
+#region-map #region-overview-selected .region-selected{fill:url(#selected-gradient);stroke:#9ebbc7;stroke-width:5px;filter:drop-shadow(0 2px 0 #89a8b2) drop-shadow(0 4px 0 #829fa9) drop-shadow(0 9px 8px #7c979b55)}
+@media(max-width:760px){#region-map .region-selected,#region-map #region-overview-selected .region-selected{stroke-width:4px}#region-map .neighborhood-border{stroke-width:1px}}
+
+/* Keep marker hit areas at the icon itself; never scale the translated map position. */
+#region-map .place-marker-position{pointer-events:none}
+#region-map .place-marker{pointer-events:none}
+#region-map .place-marker-hit{pointer-events:all;cursor:pointer;outline:none}
+#region-map .place-marker-hit:focus-visible{stroke:#405d65;stroke-width:2px;stroke-dasharray:3 2;vector-effect:non-scaling-stroke}
+#region-map .place-marker .marker-icon{pointer-events:none;transform-box:fill-box;transform-origin:center;transition:transform .16s ease}
+#region-map .place-marker-hit:hover+.marker-icon,#region-map .place-marker-hit:focus-visible+.marker-icon{transform:scale(1.08)}
+@media(prefers-reduced-motion:reduce){#region-map .place-marker .marker-icon{transition:none}}

@@ -140,7 +140,9 @@
     const base = document.createElementNS(NS, 'g');
     base.id = 'region-overview-depth';
     base.classList.add('region-depth');
-    for (let layer = 6; layer >= 1; layer--) {
+    // The silhouette look comes from the shared SVG drop shadow; one offset
+    // rim keeps this detailed map from accumulating oversized dark edges.
+    for (let layer = 1; layer >= 1; layer--) {
       selected.forEach((f) => {
         const path = makePath(f, 'region-side');
         path.setAttribute('transform', `translate(0 ${depth * layer / 6})`);

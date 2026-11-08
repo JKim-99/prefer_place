@@ -47,7 +47,11 @@ test('adding a search result positions its marker independently of hover styling
   const result = get('place-search-results').children[0]; assert.ok(result);
   result.children[2].dispatch('submit'); await new Promise(resolve => setImmediate(resolve));
   const markerLayer = svg.children.find(child => child.id === 'place-markers'); assert.ok(markerLayer);
-  const position = markerLayer.children[0], marker = position.children[0];
-  assert.match(position.attrs.transform, /^translate\(/); assert.equal(marker.attrs.class, 'place-marker');
-  assert.equal(marker.attrs.transform, undefined);
+  const position = markerLayer.children[0], marker = position.children[0], hit = marker.children[0], icon = marker.children[1];
+  assert.match(position.attrs.transform, /^translate\(/); assert.equal(position.attrs.class, 'place-marker-position'); assert.equal(marker.attrs.class, 'place-marker');
+  assert.equal(hit.tag, 'circle'); assert.equal(hit.attrs.class, 'place-marker-hit'); assert.equal(hit.attrs.role, 'button');
+  assert.ok(Number(hit.attrs.r) > 0 && Number(hit.attrs.r) < Number(icon.attrs['font-size']));
+  assert.equal(icon.attrs.class, 'marker-icon'); assert.equal(icon.attrs['pointer-events'], 'none');
+  assert.equal(marker.attrs.role, undefined); assert.equal(marker.attrs.tabindex, undefined); assert.equal(hit.attrs.fill, 'transparent');
+  assert.equal(marker.attrs.transform, undefined); assert.equal(position.attrs['pointer-events'], undefined);
 });

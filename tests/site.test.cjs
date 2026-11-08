@@ -13,7 +13,7 @@ test('homepage provides a manual region picker and a map', () => {
 
 test('map detail styling follows the homepage palette without removing map controls', () => {
   const css = readFileSync(resolve(__dirname, '../public/assets/css/styles.css'), 'utf8');
-  for (const expected of ['#region-map .region-other', '#region-map .region-side', '#region-map .region-selected', '#region-map .neighborhood-border', '#region-map #neighborhood-labels text']) {
+  for (const expected of ['#region-map .region-other', '#region-map .region-side', '#region-map .region-selected', '#region-map .neighborhood-border', '#region-map #neighborhood-labels text', '#region-map .place-marker-position{pointer-events:none}', '#region-map .place-marker{pointer-events:none}', '#region-map .place-marker-hit{pointer-events:all']) {
     assert.ok(css.includes(expected), `missing map surface style: ${expected}`);
   }
   for (const expected of ['id="zoom-in"', 'id="zoom-out"', 'id="zoom-reset"', 'id="region-map"']) assert.ok(html.includes(expected), `missing existing map control: ${expected}`);
@@ -21,6 +21,9 @@ test('map detail styling follows the homepage palette without removing map contr
   assert.match(app, /svg\.addEventListener\('wheel'/);
   assert.match(app, /svg\.addEventListener\('pointerdown'/);
   assert.match(app, /id = 'neighborhood-borders'/);
+  assert.match(app, /for \(let layer = 1; layer >= 1; layer--\)/);
+  const places = readFileSync(resolve(__dirname, '../public/assets/js/places.js'), 'utf8');
+  assert.match(places, /position\.setAttribute\('class', 'place-marker-position'\)/);
 });
 
 test('boundary data covers the source dataset and the requested examples', () => {
