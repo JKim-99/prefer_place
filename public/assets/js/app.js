@@ -10,6 +10,7 @@
   let features = [], neighborhoods = [], sido = '', district = '', chosen = null;
   let currentView = null, baseView = null, animationFrame = null, featured = null, pressedFeature = null;
   let neighborhoodLabels = [];
+  let mapDrag = null;
   $('open-picker').disabled = true; $('change-location').disabled = true;
 
   // 일반구가 있는 시는 시 단위로 선택하고 모든 구를 함께 표시합니다.
@@ -78,6 +79,12 @@
   }
   function updateNeighborhoodLabels() {
     if (!currentView || !baseView) return;
+    const detailed = currentView[2] / baseView[2] <= .75;
+    ['region-overview-background', 'region-overview-depth', 'region-overview-selected'].forEach(id => {
+      const group = svg.querySelector(`#${id}`); if (group) group.style.display = detailed ? 'none' : '';
+    });
+    const borders = svg.querySelector('#neighborhood-borders');
+    if (borders) borders.style.display = detailed ? '' : 'none';
     const layer = svg.querySelector('#neighborhood-labels'); if (!layer) return;
     const zoomed = currentView[2] / baseView[2] <= .4;
     layer.style.display = zoomed ? '' : 'none'; if (!zoomed) return;
@@ -118,16 +125,20 @@
     });
     defs.append(gradient); svg.append(defs);
     const selectedGroup = document.createElementNS(NS, 'g');
+    selectedGroup.id = 'region-overview-selected';
     selectedGroup.classList.add('region-selected-group');
     const makePath = (f, className) => {
       const path = document.createElementNS(NS, 'path'); path.setAttribute('d', pathFor(f)); path.setAttribute('fill-rule', 'evenodd'); path.setAttribute('vector-effect', 'non-scaling-stroke');
       path.setAttribute('class', className);
       return path;
     };
-    features.filter((f) => !selected.includes(f)).forEach((f) => svg.append(makePath(f, 'region-other')));
+    const background = document.createElementNS(NS, 'g'); background.id = 'region-overview-background';
+    features.filter((f) => !selected.includes(f)).forEach((f) => background.append(makePath(f, 'region-other')));
+    svg.append(background);
     // Draw the offset silhouettes under the surface to create a shallow visible edge.
     const depth = Math.max(maxX - minX, maxY - minY) * .025;
     const base = document.createElementNS(NS, 'g');
+    base.id = 'region-overview-depth';
     base.classList.add('region-depth');
     for (let layer = 6; layer >= 1; layer--) {
       selected.forEach((f) => {
@@ -141,9 +152,10 @@
     svg.append(selectedGroup);
     const borders = document.createElementNS(NS, 'g'); borders.id = 'neighborhood-borders';
     const labels = document.createElementNS(NS, 'g'); labels.id = 'neighborhood-labels'; labels.setAttribute('aria-hidden', 'true');
+    const selectedCodes = new Set(selected.map(feature => feature.properties.sgg));
     neighborhoodLabels = [];
     neighborhoods.forEach((feature) => {
-      const path = makePath(feature, 'neighborhood-border'); borders.append(path);
+      const path = makePath(feature, `neighborhood-border ${selectedCodes.has(feature.properties.sgg) ? 'neighborhood-selected' : 'neighborhood-other'}`); borders.append(path);
       const center = neighborhoodCenter(feature.geometry);
       if (!center || !feature.properties.dong) return;
       const text = document.createElementNS(NS, 'text'); text.setAttribute('x', center.x); text.setAttribute('y', center.y);
@@ -196,6 +208,33 @@
     const anchor = point.matrixTransform(matrix.inverse());
     event.preventDefault(); zoomMap(event.deltaY < 0 ? .85 : 1 / .85, anchor);
   }, { passive: false });
+  function pointerPosition(event) {
+    const matrix = svg.getScreenCTM(); if (!matrix) return null;
+    const point = svg.createSVGPoint(); point.x = event.clientX; point.y = event.clientY;
+    return point.matrixTransform(matrix.inverse());
+  }
+  svg.addEventListener('pointerdown', event => {
+    if (!currentView || event.button !== 0 || event.target.closest('.place-marker')) return;
+    const point = pointerPosition(event); if (!point) return;
+    if (animationFrame !== null) { cancelAnimationFrame(animationFrame); animationFrame = null; }
+    mapDrag = { pointerId: event.pointerId, x: point.x, y: point.y };
+    svg.setPointerCapture(event.pointerId); svg.classList.add('is-panning');
+    $('marker-tooltip').hidden = true; event.preventDefault();
+  });
+  svg.addEventListener('pointermove', event => {
+    if (!mapDrag || event.pointerId !== mapDrag.pointerId) return;
+    const point = pointerPosition(event); if (!point) return;
+    currentView[0] += mapDrag.x - point.x; currentView[1] += mapDrag.y - point.y;
+    svg.setAttribute('viewBox', currentView.join(' ')); updateNeighborhoodLabels();
+  });
+  function endMapDrag(event) {
+    if (!mapDrag || event.pointerId !== mapDrag.pointerId) return;
+    mapDrag = null; svg.classList.remove('is-panning');
+    if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId);
+  }
+  svg.addEventListener('pointerup', endMapDrag);
+  svg.addEventListener('pointercancel', endMapDrag);
+  svg.addEventListener('lostpointercapture', endMapDrag);
   window.addEventListener('resize', updateNeighborhoodLabels);
   Promise.all(['assets/data/sigungu.geojson', 'assets/data/emd.geojson'].map(url => fetch(url).then(response => { if (!response.ok) throw new Error('data'); return response.json(); }))).then(([data, dongData]) => {
     features = data.features.filter((f) => f.properties?.sidonm && f.properties?.sggnm && f.geometry);
