@@ -86,7 +86,7 @@
       function updateBadges() {
         badges.replaceChildren();
         if (visitLabels[record.visit_status]) { const badge = document.createElement('span'); badge.className = 'visit-badge'; badge.textContent = visitLabels[record.visit_status]; badges.append(badge); }
-        (record.tags || []).forEach(tag => { const badge = document.createElement('span'); badge.textContent = `#${tag}`; badges.append(badge); });
+        (record.tags || []).forEach(tag => { const badge = document.createElement('button'); badge.type = 'button'; badge.textContent = `#${tag}`; badge.setAttribute('aria-label', `${tag} 태그로 검색`); badge.addEventListener('click', () => { $('place-record-search').value = tag; renderPlaces(); $('place-record-search').focus(); }); badges.append(badge); });
         badges.hidden = !badges.children.length;
       }
       updateBadges(); info.append(badges);
@@ -109,7 +109,7 @@
         try { await api('/api/places/records', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'details', placeId: record.place_id, ...saved }) }); if (epoch !== authEpoch) return; record.note = saved.note; record.visit_status = saved.visitStatus; record.tags = saved.tags; updateBadges(); if (note.value === saved.note && visit.value === saved.visitStatus && tagInput.value === tagText) { drafts.delete(record.place_id); message.textContent = '기록을 저장했습니다.'; } else message.textContent = '저장 후 바뀐 내용은 다시 저장해 주세요.'; }
         catch (error) { if (epoch === authEpoch) message.textContent = error.message; } finally { save.disabled = false; }
       });
-      const details = document.createElement('details'), summary = document.createElement('summary'); summary.textContent = '메모와 방문 상태'; details.append(summary, editor);
+      const details = document.createElement('details'), summary = document.createElement('summary'); summary.textContent = '메모·방문 상태·태그'; details.append(summary, editor);
       info.append(details); li.append(info, toggle); list.append(li);
     });
   }

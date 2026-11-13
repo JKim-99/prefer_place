@@ -56,6 +56,7 @@ dialog{background:#f8f7ef;border-radius:4px}.picker-list{background:#fff;border-
 .map-visit-filter{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:16px 8px 0;color:#355a43;font-size:13px;font-weight:700}.map-visit-filter[hidden]{display:none}.map-visit-filter select{min-height:42px;padding:8px;border:1px solid #becdc5;border-radius:5px;background:#fff;color:#193a3e;font:inherit}
 .place-export{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px}.place-export button{min-height:42px;padding:8px 12px;border:1px solid #a9bdab;border-radius:7px;background:#fff;color:#315d42;font:inherit;font-weight:700}.place-export p{margin:0;color:#526b5c;font-size:13px}
 .record-badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.record-badges[hidden]{display:none}.record-badges span{padding:4px 8px;border-radius:999px;background:#eef3ef;color:#355a4c;font-size:12px}.record-badges .visit-badge{background:#e1e9f8;color:#214fa8;font-weight:700}
+.mypage-place-list .record-badges button{min-height:32px;padding:4px 9px;border:1px solid #c7d8cd;border-radius:999px;background:#eef3ef;color:#355a4c;font-size:12px}.mypage-place-list .record-badges button:hover{background:#dcebe0}
 
 /* Design system: quiet surfaces and clear controls around the existing map. */
 :root{--ink:#203b30;--muted:#526b5c;--green:#234f3e;--paper:#f6f4ec;--line:#d8e1d5;--surface:#fffefa}
