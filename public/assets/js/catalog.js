@@ -28,6 +28,6 @@
     const { rows, version } = await regionRows(sido, district), needle = query.toLocaleLowerCase('ko');
     const matches = rows.filter(row => Array.isArray(row) && typeof row[1] === 'string' && row[1].toLocaleLowerCase('ko').includes(needle));
     matches.sort((a, b) => Number(!a[1].toLocaleLowerCase('ko').startsWith(needle)) - Number(!b[1].toLocaleLowerCase('ko').startsWith(needle)) || a[1].localeCompare(b[1], 'ko'));
-    return { version, places: matches.slice(0, 30).map(([id, name, address, category, categoryName, x, y]) => ({ id, name, address, category, categoryName, x, y, data_version: version })) };
+    return { version, total: matches.length, places: matches.slice(0, 30).map(([id, name, address, category, categoryName, x, y]) => ({ id, name, address, category, categoryName, x, y, data_version: version })) };
   };
 })();

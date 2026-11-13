@@ -18,6 +18,7 @@ test('regional snapshot search limits matches and rejects unknown regions', asyn
   vm.runInNewContext(script, {window,fetch});
   const result = await window.searchPublicCatalog('충청남도','천안시','스타벅스');
   assert.equal(result.version,'20260930');
+  assert.equal(result.total,1);
   assert.equal(result.places.length,1);
   assert.equal(result.places[0].id,'biz:one');
   await window.searchPublicCatalog('충청남도','천안시','다른');

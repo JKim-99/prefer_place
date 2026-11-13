@@ -136,7 +136,7 @@
       let data;
       try {
         const snapshot = await window.searchPublicCatalog(region.sido, region.district, query);
-        data = { places: snapshot.places, snapshotVersion: snapshot.version };
+        data = { places: snapshot.places, snapshotVersion: snapshot.version, total: snapshot.total };
       } catch {
         const params = new URLSearchParams({ q: query, sido: region.sido, district: region.district });
         data = await api(`/api/places/search?${params}`, { signal: searchAbort.signal });
@@ -145,6 +145,8 @@
       const places = data.places.filter(p => Number.isFinite(Number(p.x)) && Number.isFinite(Number(p.y)));
       searchStatus.textContent = places.length ? `공공 상가정보 기준일: ${places[0].data_version}` : data.catalogReady === false ? '장소 데이터가 아직 준비되지 않았어요.' : '이 지역에서 검색 결과를 찾지 못했어요.';
       if (data.snapshotVersion && !places.length) searchStatus.textContent += ` (공공 상가정보 기준일 ${data.snapshotVersion})`;
+      if (data.snapshotVersion && places.length) searchStatus.textContent += data.total > places.length ? ` · ${data.total}건 중 ${places.length}건 표시` : ` · ${places.length}건`;
+      if (data.snapshotVersion) searchStatus.textContent += ' · 현재 영업 여부와 다를 수 있어요.';
       if (data.catalogPartial) searchStatus.textContent += ' 현재 일부 장소만 제공하므로 검색 결과가 빠질 수 있어요.';
       places.forEach(p => {
         const li = document.createElement('li'); const title = document.createElement('strong'); title.append(document.createTextNode(`${icons[category(p.category)]} `)); const name = document.createElement('span'); highlightName(name, p.name, query); title.append(name);

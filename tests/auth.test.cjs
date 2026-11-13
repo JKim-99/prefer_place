@@ -23,3 +23,19 @@ test('state-changing requests require the same origin and cookies are protected'
   assert.equal(a.sameOrigin(new Request(url, { headers: { Origin: 'https://other.example' } })), false);
   assert.match(a.cookie(new Request(url), 'token', 60), /HttpOnly; SameSite=Lax; Secure/);
 });
+test('unknown and known identifiers both perform password verification', async () => {
+  const helper = `export const json=(body,status=200)=>new Response(JSON.stringify(body),{status}); export const readBody=r=>r.json(); export const validPassword=()=>true; export const verifyPassword=async (password,hash)=>{globalThis.__loginHashes.push(hash);return false}; export const newSession=()=>{}; export const cookie=()=>'';`;
+  const helperUrl = `data:text/javascript;base64,${Buffer.from(helper).toString('base64')}`;
+  const loginSource = readFileSync(resolve(__dirname, '../functions/api/auth/login.js'), 'utf8').replace("'../../../lib/server/auth.js'", `'${helperUrl}'`);
+  const { onRequestPost } = await import(`data:text/javascript;base64,${Buffer.from(loginSource).toString('base64')}`);
+  globalThis.__loginHashes = [];
+  let known = false;
+  const DB = {prepare(sql) {return {bind() {return {first:async () => sql.includes('FROM users') && known ? {password_hash:'stored-hash'} : null, run:async () => ({})};}};}};
+  const request = () => new Request('https://example.test/api/auth/login',{method:'POST',body:JSON.stringify({username:'someone',password:'wrong-password'})});
+  assert.equal((await onRequestPost({request:request(),env:{DB}})).status,401);
+  known = true;
+  assert.equal((await onRequestPost({request:request(),env:{DB}})).status,401);
+  assert.match(globalThis.__loginHashes[0], /^pbkdf2-sha256\$100000\$/);
+  assert.equal(globalThis.__loginHashes[1],'stored-hash');
+  delete globalThis.__loginHashes;
+});
