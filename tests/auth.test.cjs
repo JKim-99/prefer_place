@@ -23,6 +23,21 @@ test('state-changing requests require the same origin and cookies are protected'
   assert.equal(a.sameOrigin(new Request(url, { headers: { Origin: 'https://other.example' } })), false);
   assert.match(a.cookie(new Request(url), 'token', 60), /HttpOnly; SameSite=Lax; Secure/);
 });
+test('request bodies are bounded even without a content-length header', async () => {
+  const a = await auth, url = 'https://example.com/api/auth/login';
+  const headers = {Origin:'https://example.com','Content-Type':'application/json'};
+  const normal = new Request(url,{method:'POST',headers,body:JSON.stringify({memo:'한글'})});
+  assert.deepEqual(await a.readBody(normal),{memo:'한글'});
+  let cancelled = false, produced = 0;
+  const stream = new ReadableStream({
+    pull(controller) { produced++; controller.enqueue(new Uint8Array(3000)); },
+    cancel() { cancelled = true; }
+  });
+  const oversized = new Request(url,{method:'POST',headers,body:stream,duplex:'half'});
+  assert.equal(await a.readBody(oversized,4096),null);
+  assert.equal(cancelled,true);
+  assert.ok(produced <= 3, 'the stream is stopped as soon as it exceeds the bound');
+});
 test('unknown and known identifiers both perform password verification', async () => {
   const helper = `export const json=(body,status=200)=>new Response(JSON.stringify(body),{status}); export const readBody=r=>r.json(); export const validPassword=()=>true; export const verifyPassword=async (password,hash)=>{globalThis.__loginHashes.push(hash);return false}; export const newSession=()=>{}; export const cookie=()=>'';`;
   const helperUrl = `data:text/javascript;base64,${Buffer.from(helper).toString('base64')}`;
