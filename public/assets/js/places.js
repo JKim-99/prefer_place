@@ -8,6 +8,7 @@
   const icons = { restaurant: '🍴', cafe: '☕', stay: '🛏', shopping: '🛍', beauty: '💇', medical: '⚕️', culture: '🎭', education: '📚', other: '📍' };
   const category = code => ({ FD6: 'restaurant', CE7: 'cafe', AD5: 'stay', restaurant: 'restaurant', cafe: 'cafe', stay: 'stay', shopping: 'shopping', beauty: 'beauty', medical: 'medical', culture: 'culture', education: 'education', other: 'other' }[code] || 'other');
   const selectedCategories = () => new Set([...legend.querySelectorAll('input:checked')].map(i => i.value));
+  const visitLabels = { want:'가보고 싶은 곳', visited:'방문한 곳', again:'다시 가고 싶은 곳' };
   const visitFilter = $('map-visit-filter'), tagFilter = $('map-tag-filter');
   const matchesPersonalFilters = (visitStatus, tags) => {
     if (mode !== 'mine') return true;
@@ -16,7 +17,8 @@
   };
   const updatePersonalFilters = () => { const hidden = mode !== 'mine' || !window.placeCurrentUser; $('map-visit-filter-label').hidden = hidden; $('map-tag-filter-label').hidden = hidden; };
   const tooltip = $('marker-tooltip'), detail = $('place-detail'), stage = $('map-stage');
-  function hideInfo() { tooltip.hidden = true; detail.hidden = true; }
+  function clearPersonalDetail() { $('place-personal-details').hidden = true; ['place-personal-visit', 'place-personal-note', 'place-personal-tags'].forEach(id => { $(id).textContent = ''; }); }
+  function hideInfo() { tooltip.hidden = true; detail.hidden = true; clearPersonalDetail(); }
   function showTooltip(marker, place) {
     const box = marker.getBoundingClientRect(), container = stage.getBoundingClientRect();
     tooltip.textContent = place.name; tooltip.hidden = false;
@@ -29,6 +31,16 @@
     $('place-detail-category').textContent = place.categoryName || '분류 정보 없음';
     $('place-detail-address').textContent = [place.address || '주소 정보 없음', place.dataVersion ? `공공데이터 기준일 ${place.dataVersion}` : ''].filter(Boolean).join(' · ');
     $('place-detail-link').hidden = !place.url; if (place.url) $('place-detail-link').href = place.url;
+    clearPersonalDetail();
+    if (mode === 'mine' && window.placeCurrentUser) {
+      const visit = [visitLabels[place.visitStatus], place.visitDate ? `방문일 ${place.visitDate}` : ''].filter(Boolean);
+      $('place-personal-visit').textContent = visit.join(' · ') || '아직 방문 기록이 없어요.';
+      $('place-personal-note').textContent = place.note || '';
+      $('place-personal-note').hidden = !place.note;
+      $('place-personal-tags').textContent = (place.tags || []).map(tag => `#${tag}`).join('  ');
+      $('place-personal-tags').hidden = !(place.tags || []).length;
+      $('place-personal-details').hidden = false;
+    }
     detail.hidden = false;
   }
   $('place-detail-close').addEventListener('click', hideInfo);
@@ -107,7 +119,7 @@
       const incoming = data.records || [], existing = new Set(records.map(record => record.place_id));
       records = append ? records.concat(incoming.filter(record => !existing.has(record.place_id))) : incoming;
       hasMore = !!data.hasMore; nextCursor = mode === 'mine' && typeof data.nextCursor === 'string' ? data.nextCursor : null;
-      live = records.filter(r => r.name && Number.isFinite(Number(r.longitude)) && Number.isFinite(Number(r.latitude))).map(r => ({ id: r.place_id, name: r.alias || r.name, address: r.address, category: r.category, categoryName: r.category_name, categoryMajor: r.category_major, categoryMiddle: r.category_middle, visitStatus: r.visit_status, tags: r.tags, x: r.longitude, y: r.latitude, dataVersion: r.data_version })); renderRecords();
+      live = records.filter(r => r.name && Number.isFinite(Number(r.longitude)) && Number.isFinite(Number(r.latitude))).map(r => ({ id: r.place_id, name: r.alias || r.name, address: r.address, category: r.category, categoryName: r.category_name, categoryMajor: r.category_major, categoryMiddle: r.category_middle, visitStatus: r.visit_status, visitDate: r.visit_date, note: r.note, tags: r.tags, x: r.longitude, y: r.latitude, dataVersion: r.data_version })); renderRecords();
       renderMarkers();
     } catch (error) { if (version !== generation) return; if (!append) { records = []; live = []; hasMore = false; nextCursor = null; $('saved-places').replaceChildren(); renderMarkers(); } status.textContent = append ? `장소를 더 불러오지 못했어요. ${error.message}` : error.message; }
     finally { if (version === generation) { loadingMore = false; moreButton.disabled = false; moreButton.hidden = mode !== 'mine' || !nextCursor; } }

@@ -29,11 +29,12 @@ test('adding a search result gives the marker a stable bounded hit target', asyn
   let selected = ['restaurant','cafe','stay','shopping','beauty','medical','culture','education','other'];
   const legend = new Element(); legend.querySelectorAll = () => selected.map(value => ({ value }));
   const view = new Element(); view.dataset.view = 'mine';
+  const popular = new Element(); popular.dataset.view = 'popular';
   const listeners = {};
   const document = {
     getElementById: get,
     querySelector(selector) { if (selector === '.place-legend') return legend; if (selector === '[data-view="mine"]') return view; return null; },
-    querySelectorAll(selector) { return selector === '.place-view' ? [view] : []; },
+    querySelectorAll(selector) { return selector === '.place-view' ? [view, popular] : []; },
     createElement(tag) { return new Element(tag); },
     createElementNS(ns, tag) { return new Element(tag); },
     createTextNode(text) { return { textContent: text }; },
@@ -41,7 +42,7 @@ test('adding a search result gives the marker a stable bounded hit target', asyn
   };
   const place = { id: 'biz:MA123', name: '테스트 카페', x: '127', y: '37.5', category: 'cafe', address: '주소' };
   let failRecords = false;
-  const fetch = async url => { if (failRecords && url.startsWith('/api/places/records?')) throw new Error('network error'); return { ok: true, headers: { get: () => 'application/json' }, json: async () => url.startsWith('/api/places/search') ? { places: [place] } : url.startsWith('/api/places/records?') ? { records: [{ place_id: 'biz:MA123', name: '테스트 카페', longitude: 127, latitude: 37.5, category: 'cafe', alias: '', tags: ['조용함'] }] } : { ok: true } }; };
+  const fetch = async url => { if (failRecords && url.startsWith('/api/places/records?')) throw new Error('network error'); return { ok: true, headers: { get: () => 'application/json' }, json: async () => url.startsWith('/api/places/search') ? { places: [place] } : url.startsWith('/api/places/records?') ? { records: [{ place_id: 'biz:MA123', name: '테스트 카페', longitude: 127, latitude: 37.5, category: 'cafe', alias: '', tags: ['조용함'], note:'개인 메모', visit_status:'again', visit_date:'2026-10-25' }] } : { ok: true } }; };
   const context = { document, window: { placeCurrentUser: { id: 'u' }, confirm: () => false }, fetch, URLSearchParams, AbortController, setTimeout, clearTimeout, console };
   vm.runInNewContext(readFileSync(resolve(__dirname, '../public/assets/js/places.js'), 'utf8'), context);
   const shapes = [{ geometry: { type: 'Polygon', coordinates: [[[126,37],[128,37],[128,38],[126,38],[126,37]]] } }];
@@ -68,6 +69,9 @@ test('adding a search result gives the marker a stable bounded hit target', asyn
   const savedRow = get('saved-places').children[0];
   assert.equal(savedRow.children[0].tag, 'button');
   savedRow.children[0].click(); assert.equal(get('place-detail').hidden, false);
+  assert.equal(get('place-personal-details').hidden, false);
+  assert.equal(get('place-personal-note').textContent, '개인 메모');
+  assert.match(get('place-personal-visit').textContent, /2026-10-25/);
   savedRow.children[1].click(); assert.equal(get('saved-places').children.length, 1, 'cancelled deletion preserves the record');
   get('map-visit-filter').value = 'visited'; get('map-visit-filter').dispatch('change');
   assert.equal(get('saved-places').children.length, 0, 'visit filter hides records with a different status');
@@ -80,6 +84,11 @@ test('adding a search result gives the marker a stable bounded hit target', asyn
   get('map-tag-filter').value = '조용'; get('map-tag-filter').dispatch('input');
   assert.equal(get('saved-places').children.length, 1, 'tag filter matches a private tag');
   get('map-tag-filter').value = ''; get('map-tag-filter').dispatch('input');
+  popular.click(); await new Promise(resolve => setImmediate(resolve));
+  get('saved-places').children[0].children[0].click();
+  assert.equal(get('place-personal-details').hidden, true, 'public modes do not show personal details');
+  assert.equal(get('place-personal-note').textContent, '');
+  view.click(); await new Promise(resolve => setImmediate(resolve));
   selected = ['restaurant']; legend.dispatch('change');
   assert.equal(get('saved-places').children.length, 0, 'list follows the category filter');
   failRecords = true; view.click(); await new Promise(resolve => setImmediate(resolve));

@@ -5,6 +5,7 @@
   const labels = { restaurant: '음식점', cafe: '카페·디저트', stay: '숙박', shopping: '쇼핑', beauty: '미용', medical: '의료', culture: '문화', education: '교육', other: '기타' };
   const visitLabels = { want:'가보고 싶은 곳', visited:'방문한 곳', again:'다시 가고 싶은 곳' };
   let avatar = null, records = [], category = 'all', authEpoch = 0, loadGeneration = 0;
+  let firstTab = window.location?.hash === '#places' ? 'places' : 'profile';
   const drafts = new Map();
   async function api(url, options) {
     const epoch = authEpoch;
@@ -45,7 +46,7 @@
       }
     }
     if (!event.detail.signedIn && dialog?.open) dialog.close();
-    if (profilePage && event.detail.signedIn) { profilePage.hidden = false; fillProfile(event.detail.user); selectTab('profile'); }
+    if (profilePage && event.detail.signedIn) { profilePage.hidden = false; fillProfile(event.detail.user); selectTab(firstTab); firstTab = 'profile'; }
   });
   $('profile-avatar')?.addEventListener('change', async event => {
     const file = event.target.files[0]; if (!file) return;
