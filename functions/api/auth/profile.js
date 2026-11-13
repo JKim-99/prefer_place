@@ -23,12 +23,21 @@ export async function onRequestPatch({ request, env }) {
   }
   if (body.action === 'password') {
     if (!validPassword(body.newPassword) || body.newPassword !== body.passwordConfirm) return json({ error: '새 비밀번호와 확인을 확인해 주세요.' }, 400);
+    const now = Math.floor(Date.now() / 1000), limitKey = `password:${user.id}`;
+    const attempt = await env.DB.prepare('SELECT failures, locked_until FROM login_attempts WHERE email = ?').bind(limitKey).first();
+    if (attempt?.locked_until > now) return json({ error: '비밀번호 확인을 여러 번 실패했습니다. 잠시 후 다시 시도해 주세요.' }, 429);
     const row = await env.DB.prepare('SELECT password_hash FROM users WHERE id = ?').bind(user.id).first();
-    if (!await verifyPassword(body.currentPassword, row.password_hash)) return json({ error: '현재 비밀번호가 올바르지 않습니다.' }, 400);
+    if (!row || !await verifyPassword(body.currentPassword, row.password_hash)) {
+      await env.DB.prepare(`INSERT INTO login_attempts (email, failures, locked_until, updated_at) VALUES (?, 1, 0, ?)
+        ON CONFLICT(email) DO UPDATE SET failures = CASE WHEN updated_at < ? OR locked_until > 0 THEN 1 ELSE failures + 1 END,
+        locked_until = CASE WHEN updated_at >= ? AND locked_until = 0 AND failures >= 4 THEN ? ELSE 0 END, updated_at = ?`).bind(limitKey, now, now-900, now-900, now+900, now).run();
+      return json({ error: '현재 비밀번호가 올바르지 않습니다.' }, 400);
+    }
     const token = await sessionToken(request);
     await env.DB.batch([
       env.DB.prepare('UPDATE users SET password_hash = ? WHERE id = ?').bind(await hashPassword(body.newPassword), user.id),
-      env.DB.prepare('DELETE FROM sessions WHERE user_id = ? AND token_hash != ?').bind(user.id, token)
+      env.DB.prepare('DELETE FROM sessions WHERE user_id = ? AND token_hash != ?').bind(user.id, token),
+      env.DB.prepare('DELETE FROM login_attempts WHERE email = ?').bind(limitKey)
     ]);
     return json({ ok: true });
   }

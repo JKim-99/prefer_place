@@ -44,6 +44,25 @@ test('profile rejects invalid avatar and password confirmation before modifying 
   assert.equal((await onRequestPatch({ request: request('/api/auth/profile', { action: 'password', newPassword: 'long-password', passwordConfirm: 'different' }), env: { DB: db } })).status, 400);
   assert.equal(calls.some(sql => sql.startsWith('UPDATE')), false);
 });
+test('password change limits repeated incorrect current-password attempts', async () => {
+  const { onRequestPatch } = await import(profileUrl);
+  const { hashPassword } = await import(authUrl);
+  const hash = await hashPassword('correct-password');
+  let failures = 0, passwordReads = 0;
+  const db = { prepare(sql) { return { bind(...args) { return {
+    first: async () => {
+      if (sql.includes('FROM sessions JOIN users')) return { id:'owner' };
+      if (sql.includes('FROM login_attempts')) return failures >= 5 ? {failures,locked_until:Math.floor(Date.now()/1000)+900} : {failures,locked_until:0};
+      if (sql.includes('SELECT password_hash')) { passwordReads++; return {password_hash:hash}; }
+      return null;
+    },
+    run: async () => { if (sql.includes('INSERT INTO login_attempts')) { assert.equal(args[0],'password:owner'); failures++; } return {meta:{changes:1}}; }
+  }; } }; } };
+  const body = { action:'password', currentPassword:'wrong-password', newPassword:'new-password-long', passwordConfirm:'new-password-long' };
+  for (let i=0;i<5;i++) assert.equal((await onRequestPatch({request:request('/api/auth/profile',body),env:{DB:db}})).status,400);
+  assert.equal((await onRequestPatch({request:request('/api/auth/profile',body),env:{DB:db}})).status,429);
+  assert.equal(passwordReads,5);
+});
 test('personal notes and visit state are validated and scoped to the owner', async () => {
   const { onRequestPatch, onRequestGet } = await import(recordsUrl); const calls = [];
   const db = { prepare(sql) { return { bind(...args) { calls.push({sql, args}); return { first: async () => ({ id: 'owner' }), run: async () => ({ meta: { changes: args.at(-1) === 'biz:missing' ? 0 : 1 } }), all: async () => ({ results: [] }) }; } }; } };
