@@ -10,7 +10,7 @@
   const NS = 'http://www.w3.org/2000/svg';
   let features = [], neighborhoods = [], sido = '', district = '', chosen = null;
   let currentView = null, baseView = null, animationFrame = null, featured = null, pressedFeature = null;
-  let neighborhoodLabels = [];
+  let neighborhoodLabels = [], buildNeighborhoodLayer = null;
   let mapDrag = null;
   $('open-picker').disabled = true; $('change-location').disabled = true;
 
@@ -102,6 +102,7 @@
   function updateNeighborhoodLabels() {
     if (!currentView || !baseView) return;
     const detailed = currentView[2] / baseView[2] <= .75;
+    if (detailed && buildNeighborhoodLayer) { const build = buildNeighborhoodLayer; buildNeighborhoodLayer = null; build(); }
     ['region-overview-background', 'region-overview-depth', 'region-overview-selected'].forEach(id => {
       const group = svg.querySelector(`#${id}`); if (group) group.style.display = detailed ? 'none' : '';
     });
@@ -174,19 +175,22 @@
     svg.append(base);
     selected.forEach((f) => selectedGroup.append(makePath(f, 'region-selected')));
     svg.append(selectedGroup);
-    const borders = document.createElementNS(NS, 'g'); borders.id = 'neighborhood-borders';
-    const labels = document.createElementNS(NS, 'g'); labels.id = 'neighborhood-labels'; labels.setAttribute('aria-hidden', 'true');
     const selectedCodes = new Set(selected.map(feature => feature.properties.sgg));
     neighborhoodLabels = [];
-    neighborhoods.forEach((feature) => {
-      const path = makePath(feature, `neighborhood-border ${selectedCodes.has(feature.properties.sgg) ? 'neighborhood-selected' : 'neighborhood-other'}`); borders.append(path);
-      const center = neighborhoodCenter(feature.geometry);
-      if (!center || !feature.properties.dong) return;
-      const text = document.createElementNS(NS, 'text'); text.setAttribute('x', center.x); text.setAttribute('y', center.y);
-      text.setAttribute('text-anchor', 'middle'); text.setAttribute('dominant-baseline', 'middle'); text.textContent = feature.properties.dong;
-      labels.append(text); neighborhoodLabels.push({ element: text, x: center.x, y: center.y });
-    });
-    svg.append(borders, labels);
+    buildNeighborhoodLayer = () => {
+      const borders = document.createElementNS(NS, 'g'); borders.id = 'neighborhood-borders';
+      const labels = document.createElementNS(NS, 'g'); labels.id = 'neighborhood-labels'; labels.setAttribute('aria-hidden', 'true');
+      neighborhoods.forEach((feature) => {
+        const path = makePath(feature, `neighborhood-border ${selectedCodes.has(feature.properties.sgg) ? 'neighborhood-selected' : 'neighborhood-other'}`); borders.append(path);
+        const center = neighborhoodCenter(feature.geometry);
+        if (!center || !feature.properties.dong) return;
+        const text = document.createElementNS(NS, 'text'); text.setAttribute('x', center.x); text.setAttribute('y', center.y);
+        text.setAttribute('text-anchor', 'middle'); text.setAttribute('dominant-baseline', 'middle'); text.textContent = feature.properties.dong;
+        labels.append(text); neighborhoodLabels.push({ element: text, x: center.x, y: center.y });
+      });
+      const markers = svg.querySelector('#place-markers');
+      svg.insertBefore(borders, markers); svg.insertBefore(labels, markers);
+    };
     animateView(targetView);
     document.dispatchEvent(new CustomEvent('place-region-change', { detail: { ...chosen, shapes: selected } }));
   }
