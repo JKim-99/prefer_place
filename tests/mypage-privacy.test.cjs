@@ -53,7 +53,7 @@ test('a delayed personal records response is ignored after logout', async () => 
   assert.equal(get('mypage-places-status').textContent,'');
 });
 
-test('an expired session clears personal content and prompts login', async () => {
+test('an expired session clears personal content even if the error body is not JSON', async () => {
   class Element {
     constructor() { this.value = ''; this.hidden = false; this.textContent = ''; this.children = []; this.dataset = {}; this.handlers = {}; }
     addEventListener(name, fn) { this.handlers[name] = fn; }
@@ -70,7 +70,7 @@ test('an expired session clears personal content and prompts login', async () =>
   const document = {body:{classList:{contains:()=>true}},getElementById:get,addEventListener:(name,fn)=>{handlers[name]=fn;}};
   const window = {placeCurrentUser:{id:'owner'}};
   window.placeShowUser = user => { window.placeCurrentUser = user; handlers['place-auth-change']({detail:{signedIn:!!user,user}}); };
-  const fetch = async () => ({ok:false,status:401,json:async()=>({error:'로그인이 필요합니다.'})});
+  const fetch = async () => ({ok:false,status:401,json:async()=>{throw new SyntaxError('not json');}});
   vm.runInNewContext(readFileSync(resolve(__dirname,'../public/assets/js/mypage.js'),'utf8'),{document,window,fetch});
   tab.handlers.click(); await new Promise(resolve => setImmediate(resolve));
   assert.equal(window.placeCurrentUser,null);

@@ -66,13 +66,13 @@
   async function api(url, options) {
     const requestUser = window.placeCurrentUser;
     const response = await fetch(url, options); let data;
+    if (response.status === 401 && requestUser && requestUser === window.placeCurrentUser) window.placeShowUser(null);
     try { data = await response.json(); } catch {
       if (response.redirected || response.headers.get('content-type')?.includes('text/html')) {
         throw new Error('서버가 API 대신 사이트 페이지를 반환했습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.');
       }
       throw new Error('서버 응답을 확인할 수 없습니다.');
     }
-    if (response.status === 401 && requestUser && requestUser === window.placeCurrentUser) window.placeShowUser(null);
     if (!response.ok) throw new Error(data.error || '요청을 처리하지 못했습니다.'); return data;
   }
   function renderRecords() {
