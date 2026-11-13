@@ -3,6 +3,7 @@
   const $ = id => document.getElementById(id), dialog = $('mypage-dialog'), profilePage = document.body.classList.contains('mypage-route') ? $('profile-page') : null;
   const icons = { restaurant: '🍴', cafe: '☕', stay: '🛏', shopping: '🛍', beauty: '💇', medical: '⚕️', culture: '🎭', education: '📚', other: '📍' };
   const labels = { restaurant: '음식점', cafe: '카페·디저트', stay: '숙박', shopping: '쇼핑', beauty: '미용', medical: '의료', culture: '문화', education: '교육', other: '기타' };
+  const visitLabels = { want:'가보고 싶은 곳', visited:'방문한 곳', again:'다시 가고 싶은 곳' };
   let avatar = null, records = [], category = 'all', authEpoch = 0, loadGeneration = 0;
   const drafts = new Map();
   async function api(url, options) {
@@ -81,6 +82,14 @@
       if (/^\d+$/.test(record.place_id)) { link.href = `https://place.map.kakao.com/${encodeURIComponent(record.place_id)}`; link.target = '_blank'; link.rel = 'noopener noreferrer'; }
       link.textContent = `${icons[record.category] || icons.other} ${record.alias || record.name || '기존 카카오 장소 보기'}${record.name ? '' : ' ↗'}`;
       region.textContent = `${record.region_sido} ${record.region_district} · ${labels[record.category] || labels.other}`; info.append(link, region);
+      const badges = document.createElement('div'); badges.className = 'record-badges';
+      function updateBadges() {
+        badges.replaceChildren();
+        if (visitLabels[record.visit_status]) { const badge = document.createElement('span'); badge.className = 'visit-badge'; badge.textContent = visitLabels[record.visit_status]; badges.append(badge); }
+        (record.tags || []).forEach(tag => { const badge = document.createElement('span'); badge.textContent = `#${tag}`; badges.append(badge); });
+        badges.hidden = !badges.children.length;
+      }
+      updateBadges(); info.append(badges);
       toggle.type = 'button'; toggle.textContent = record.is_public ? '공개' : '비공개'; toggle.setAttribute('aria-pressed', String(!!record.is_public)); toggle.setAttribute('aria-label', `${record.alias || record.name || '장소'} 공개 설정: ${toggle.textContent}`);
       toggle.addEventListener('click', async () => { if (!record.is_public && !window.confirm('이 장소의 이름과 위치가 익명 장소 탐색에 표시될 수 있습니다. 메모, 방문 상태와 태그는 공개되지 않습니다. 공개할까요?')) return; toggle.disabled = true; const epoch = authEpoch; try { await api('/api/places/records', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ placeId: record.place_id, isPublic: !record.is_public }) }); if (epoch !== authEpoch) return; record.is_public = record.is_public ? 0 : 1; toggle.textContent = record.is_public ? '공개' : '비공개'; toggle.setAttribute('aria-pressed', String(!!record.is_public)); toggle.setAttribute('aria-label', `${record.alias || record.name || '장소'} 공개 설정: ${toggle.textContent}`); document.dispatchEvent(new CustomEvent('place-records-change')); } catch (error) { if (epoch === authEpoch) $('mypage-places-status').textContent = error.message; } finally { toggle.disabled = false; } });
       const editor = document.createElement('form'), noteLabel = document.createElement('label'), note = document.createElement('textarea'), visitLabel = document.createElement('label'), visit = document.createElement('select'), tagLabel = document.createElement('label'), tagInput = document.createElement('input'), save = document.createElement('button'), message = document.createElement('p');
@@ -97,7 +106,7 @@
       editor.addEventListener('submit', async event => {
         event.preventDefault(); save.disabled = true; message.textContent = '저장 중...';
         const epoch = authEpoch, tagText = tagInput.value, saved = { note: note.value, visitStatus: visit.value, tags: tagText.split(',').map(tag => tag.trim()).filter(Boolean) };
-        try { await api('/api/places/records', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'details', placeId: record.place_id, ...saved }) }); if (epoch !== authEpoch) return; record.note = saved.note; record.visit_status = saved.visitStatus; record.tags = saved.tags; if (note.value === saved.note && visit.value === saved.visitStatus && tagInput.value === tagText) drafts.delete(record.place_id); message.textContent = '기록을 저장했습니다.'; }
+        try { await api('/api/places/records', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'details', placeId: record.place_id, ...saved }) }); if (epoch !== authEpoch) return; record.note = saved.note; record.visit_status = saved.visitStatus; record.tags = saved.tags; updateBadges(); if (note.value === saved.note && visit.value === saved.visitStatus && tagInput.value === tagText) { drafts.delete(record.place_id); message.textContent = '기록을 저장했습니다.'; } else message.textContent = '저장 후 바뀐 내용은 다시 저장해 주세요.'; }
         catch (error) { if (epoch === authEpoch) message.textContent = error.message; } finally { save.disabled = false; }
       });
       const details = document.createElement('details'), summary = document.createElement('summary'); summary.textContent = '메모와 방문 상태'; details.append(summary, editor);
