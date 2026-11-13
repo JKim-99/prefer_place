@@ -7,6 +7,9 @@
   const icons = { restaurant: '🍴', cafe: '☕', stay: '🛏', shopping: '🛍', beauty: '💇', medical: '⚕️', culture: '🎭', education: '📚', other: '📍' };
   const category = code => ({ FD6: 'restaurant', CE7: 'cafe', AD5: 'stay', restaurant: 'restaurant', cafe: 'cafe', stay: 'stay', shopping: 'shopping', beauty: 'beauty', medical: 'medical', culture: 'culture', education: 'education', other: 'other' }[code] || 'other');
   const selectedCategories = () => new Set([...legend.querySelectorAll('input:checked')].map(i => i.value));
+  const visitFilter = $('map-visit-filter');
+  const matchesVisit = value => mode !== 'mine' || visitFilter.value === 'all' || visitFilter.value === (value || '');
+  const updateVisitFilter = () => { $('map-visit-filter-label').hidden = mode !== 'mine' || !window.placeCurrentUser; };
   const tooltip = $('marker-tooltip'), detail = $('place-detail'), stage = $('map-stage');
   function hideInfo() { tooltip.hidden = true; detail.hidden = true; }
   function showTooltip(marker, place) {
@@ -29,7 +32,7 @@
     if (!region || !live.length) return;
     const vb = svg.viewBox.baseVal, size = Math.max(vb.width, vb.height) * .045;
     const group = document.createElementNS('http://www.w3.org/2000/svg', 'g'); group.id = 'place-markers';
-    live.filter(p => selectedCategories().has(category(p.category))).forEach(p => {
+    live.filter(p => selectedCategories().has(category(p.category)) && matchesVisit(p.visitStatus)).forEach(p => {
       const position = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       position.setAttribute('class', 'place-marker-position');
       position.setAttribute('transform', `translate(${Number(p.x) * Math.cos(36.5*Math.PI/180)} ${-Number(p.y)})`);
@@ -69,8 +72,8 @@
     const list = $('saved-places'); list.replaceChildren();
     if (!records.length) { status.textContent = mode === 'popular' ? '공개 기록이 3명 이상인 장소가 아직 없어요.' : mode === 'anonymous' ? '이 지역에 공개된 장소가 아직 없어요.' : '이 지역에 저장한 장소가 없어요.'; return; }
     const allowed = selectedCategories();
-    const namedRecords = records.filter(record => allowed.has(category(record.category)) && (record.name || (record.alias && record.alias.trim()) || /^\d+$/.test(record.place_id)));
-    status.textContent = !namedRecords.length ? '선택한 장소 종류에 해당하는 기록이 없어요.' : mode === 'popular' ? '공개 저장 사용자 수 기준입니다.' : `${namedRecords.length}개의 장소`;
+    const namedRecords = records.filter(record => allowed.has(category(record.category)) && matchesVisit(record.visit_status) && (record.name || (record.alias && record.alias.trim()) || /^\d+$/.test(record.place_id)));
+    status.textContent = !namedRecords.length ? '선택한 조건에 해당하는 기록이 없어요.' : mode === 'popular' ? '공개 저장 사용자 수 기준입니다.' : `${namedRecords.length}개의 장소`;
     namedRecords.forEach(record => {
       const li = document.createElement('li'), isLegacy = /^\d+$/.test(record.place_id), link = document.createElement(isLegacy ? 'a' : 'button');
       if (isLegacy) { link.href = `https://place.map.kakao.com/${record.place_id}`; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = record.alias || '기존 카카오 장소 보기'; }
@@ -89,16 +92,19 @@
     try {
       const params = new URLSearchParams({ sido: region.sido, district: region.district, mode });
       const data = await api(`/api/places/records?${params}`); if (version !== generation) return;
-      records = data.records || []; live = records.filter(r => r.name && Number.isFinite(Number(r.longitude)) && Number.isFinite(Number(r.latitude))).map(r => ({ id: r.place_id, name: r.alias || r.name, address: r.address, category: r.category, categoryName: r.category_name, categoryMajor: r.category_major, categoryMiddle: r.category_middle, x: r.longitude, y: r.latitude, dataVersion: r.data_version })); renderRecords();
-    } catch (error) { if (version !== generation) return; records = []; $('saved-places').replaceChildren(); status.textContent = error.message; }
+      records = data.records || []; live = records.filter(r => r.name && Number.isFinite(Number(r.longitude)) && Number.isFinite(Number(r.latitude))).map(r => ({ id: r.place_id, name: r.alias || r.name, address: r.address, category: r.category, categoryName: r.category_name, categoryMajor: r.category_major, categoryMiddle: r.category_middle, visitStatus: r.visit_status, x: r.longitude, y: r.latitude, dataVersion: r.data_version })); renderRecords();
+    } catch (error) { if (version !== generation) return; records = []; live = []; $('saved-places').replaceChildren(); status.textContent = error.message; }
     renderMarkers();
   }
-  document.addEventListener('place-auth-change', event => { if (!event.detail.signedIn) { live = []; records = []; $('saved-places').replaceChildren(); renderMarkers(); } if (region) loadRecords(); });
+  document.addEventListener('place-auth-change', event => { if (!event.detail.signedIn) { live = []; records = []; visitFilter.value = 'all'; $('saved-places').replaceChildren(); renderMarkers(); } updateVisitFilter(); if (region) loadRecords(); });
   document.addEventListener('place-region-change', event => { region = event.detail; live = []; records = []; loadRecords(); });
   document.addEventListener('place-records-change', () => { if (region) loadRecords(); });
   legend.addEventListener('change', () => { renderMarkers(); renderRecords(); });
+  visitFilter.addEventListener('change', () => { renderMarkers(); renderRecords(); });
   document.querySelectorAll('.place-view').forEach(button => button.addEventListener('click', () => {
     mode = button.dataset.view;
+    updateVisitFilter();
+    live = []; records = []; $('saved-places').replaceChildren(); renderMarkers(); status.textContent = '불러오는 중...';
     document.querySelectorAll('.place-view').forEach(item => { const active = item === button; item.classList.toggle('is-active', active); item.setAttribute('aria-pressed', String(active)); });
     loadRecords();
   }));
@@ -112,7 +118,7 @@
   }
   $('place-search-open').addEventListener('click', () => {
     searchStatus.textContent = ''; results.replaceChildren(); $('place-query').value = '';
-    if (window.placeCurrentUser === null) { $('auth-open').click(); return; }
+    if (!window.placeCurrentUser) { $('auth-open').click(); return; }
     dialog.showModal(); $('place-query').focus();
   });
   $('place-dialog-close').addEventListener('click', () => dialog.close());

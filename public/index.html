@@ -6,11 +6,11 @@
   <meta name="description" content="좋아하는 장소와 그 이유를 모으는 나만의 취향 지도">
   <meta name="theme-color" content="#f4f0e7">
   <title>취향지도 — 좋아하는 장소를 모으는 지도</title>
-  <link rel="stylesheet" href="assets/css/styles.css?v=37">
+  <link rel="stylesheet" href="assets/css/styles.css?v=38">
   <script src="assets/js/app.js?v=19" defer></script>
   <script src="assets/js/auth.js?v=9" defer></script>
   <script src="assets/js/catalog.js?v=2" defer></script>
-  <script src="assets/js/places.js?v=21" defer></script>
+  <script src="assets/js/places.js?v=22" defer></script>
   <script src="assets/js/mypage.js?v=12" defer></script>
 </head>
 <body>
@@ -33,7 +33,7 @@
             <div class="map-stage" id="map-stage"><div class="map-empty" id="map-empty"><span>⌖</span><strong>어디에서 시작해 볼까요?</strong><p>지금 있는 지역을 선택하고<br>나만의 지도를 시작해 보세요.</p></div><svg id="region-map" role="group" aria-label="선택한 지역의 행정구역 지도" hidden></svg><div class="map-zoom" role="group" aria-label="지도 확대 및 축소"><button id="zoom-in" type="button" aria-label="지도 확대">+</button><button id="zoom-out" type="button" aria-label="지도 축소">−</button><button id="zoom-reset" type="button" aria-label="지도 크기 초기화">⌂</button></div><div class="marker-tooltip" id="marker-tooltip" role="tooltip" hidden></div><section class="place-detail" id="place-detail" tabindex="-1" aria-label="장소 정보" hidden><button type="button" class="place-detail-close" id="place-detail-close" aria-label="장소 정보 닫기">×</button><strong id="place-detail-name"></strong><p id="place-detail-category"></p><p id="place-detail-address"></p><a id="place-detail-link" target="_blank" rel="noopener noreferrer">외부 지도에서 보기 ↗</a><small>장소 정보: 공공데이터포털 상가(상권)정보</small></section><fieldset class="place-legend"><legend>장소 종류</legend><label><input type="checkbox" value="restaurant" checked> 🍴 음식점</label><label><input type="checkbox" value="cafe" checked> ☕ 카페·디저트</label><label><input type="checkbox" value="stay" checked> 🛏 숙박</label><label><input type="checkbox" value="shopping" checked> 🛍 쇼핑</label><label><input type="checkbox" value="beauty" checked> 💇 미용</label><label><input type="checkbox" value="medical" checked> ⚕️ 의료</label><label><input type="checkbox" value="culture" checked> 🎭 문화</label><label><input type="checkbox" value="education" checked> 📚 교육</label><label><input type="checkbox" value="other" checked> 📍 기타</label></fieldset><div class="place-search-box"><button id="place-search-open" type="button">⌕ 장소 추가하기</button></div><p class="map-error" id="map-error" role="status" hidden></p></div>
 
           </div>
-          <div class="place-results"><p id="place-status" class="place-status" role="status">장소를 검색하고 나만의 별칭으로 기록해 보세요.</p><ul id="saved-places" class="saved-places"></ul><p class="place-attribution">장소 정보 제공: <a href="https://www.data.go.kr/data/15083033/fileData.do" target="_blank" rel="noopener noreferrer">소상공인시장진흥공단</a></p></div>
+          <div class="place-results"><label id="map-visit-filter-label" class="map-visit-filter" hidden>방문 상태<select id="map-visit-filter"><option value="all">모든 상태</option><option value="want">가보고 싶은 곳</option><option value="visited">방문한 곳</option><option value="again">다시 가고 싶은 곳</option><option value="">선택하지 않음</option></select></label><p id="place-status" class="place-status" role="status">장소를 검색하고 나만의 별칭으로 기록해 보세요.</p><ul id="saved-places" class="saved-places"></ul><p class="place-attribution">장소 정보 제공: <a href="https://www.data.go.kr/data/15083033/fileData.do" target="_blank" rel="noopener noreferrer">소상공인시장진흥공단</a></p></div>
         </div>
       </div>
     </section>

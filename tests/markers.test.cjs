@@ -23,6 +23,7 @@ test('adding a search result gives the marker a stable bounded hit target', asyn
   }
   const ids = new Map();
   const get = id => { if (!ids.has(id)) ids.set(id, new Element()); return ids.get(id); };
+  get('map-visit-filter').value = 'all';
   const svg = get('region-map'); svg.viewBox = { baseVal: { width: 1, height: 1 } };
   svg.querySelector = selector => selector === '#place-markers' ? svg.children.find(child => child.id === 'place-markers') : null;
   let selected = ['restaurant','cafe','stay','shopping','beauty','medical','culture','education','other'];
@@ -39,7 +40,8 @@ test('adding a search result gives the marker a stable bounded hit target', asyn
     addEventListener(type, fn) { (listeners[type] ||= []).push(fn); }
   };
   const place = { id: 'biz:MA123', name: '테스트 카페', x: '127', y: '37.5', category: 'cafe', address: '주소' };
-  const fetch = async url => ({ ok: true, headers: { get: () => 'application/json' }, json: async () => url.startsWith('/api/places/search') ? { places: [place] } : url.startsWith('/api/places/records?') ? { records: [{ place_id: 'biz:MA123', name: '테스트 카페', longitude: 127, latitude: 37.5, category: 'cafe', alias: '' }] } : { ok: true } });
+  let failRecords = false;
+  const fetch = async url => { if (failRecords && url.startsWith('/api/places/records?')) throw new Error('network error'); return { ok: true, headers: { get: () => 'application/json' }, json: async () => url.startsWith('/api/places/search') ? { places: [place] } : url.startsWith('/api/places/records?') ? { records: [{ place_id: 'biz:MA123', name: '테스트 카페', longitude: 127, latitude: 37.5, category: 'cafe', alias: '' }] } : { ok: true } }; };
   const context = { document, window: { placeCurrentUser: { id: 'u' }, confirm: () => false }, fetch, URLSearchParams, AbortController, setTimeout, clearTimeout, console };
   vm.runInNewContext(readFileSync(resolve(__dirname, '../public/assets/js/places.js'), 'utf8'), context);
   const shapes = [{ geometry: { type: 'Polygon', coordinates: [[[126,37],[128,37],[128,38],[126,38],[126,37]]] } }];
@@ -67,8 +69,17 @@ test('adding a search result gives the marker a stable bounded hit target', asyn
   assert.equal(savedRow.children[0].tag, 'button');
   savedRow.children[0].click(); assert.equal(get('place-detail').hidden, false);
   savedRow.children[1].click(); assert.equal(get('saved-places').children.length, 1, 'cancelled deletion preserves the record');
+  get('map-visit-filter').value = 'visited'; get('map-visit-filter').dispatch('change');
+  assert.equal(get('saved-places').children.length, 0, 'visit filter hides records with a different status');
+  const emptyLayer = svg.children.find(child => child.id === 'place-markers');
+  assert.equal(emptyLayer.children.length, 0, 'visit filter hides matching map markers');
+  get('map-visit-filter').value = 'all'; get('map-visit-filter').dispatch('change');
+  assert.equal(get('saved-places').children.length, 1);
   selected = ['restaurant']; legend.dispatch('change');
   assert.equal(get('saved-places').children.length, 0, 'list follows the category filter');
+  failRecords = true; view.click(); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(svg.children.some(child => child.id === 'place-markers'), false, 'failed view reload cannot retain old private markers');
+  assert.equal(get('place-detail').hidden, true);
   for (const fn of listeners['place-auth-change']) fn({detail:{signedIn:false}});
   assert.equal(get('saved-places').children.length, 0, 'logout immediately removes private places');
   assert.equal(get('place-detail').hidden, true, 'logout hides previously open place detail');
