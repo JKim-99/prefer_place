@@ -10,5 +10,7 @@ export async function onRequestGet({ request, env }) {
   const escaped = q.replace(/[\\%_]/g, '\\$&');
   const data = await env.DB.prepare(`SELECT id, name, address, category, category_name, category_major, category_middle, category_version, longitude, latitude, COALESCE(source_version, data_version) AS data_version FROM public_places WHERE region_sido = ? AND region_district = ? AND is_active = 1 AND data_version = (SELECT data_version FROM public_catalog_meta WHERE id = 1) AND name LIKE ? ESCAPE '\\' ORDER BY CASE WHEN name LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END, name LIMIT 30`).bind(sido, district, `%${escaped}%`, `${escaped}%`).all();
   const catalogReady = data.results.length > 0 || !!await env.DB.prepare('SELECT 1 AS present FROM public_places WHERE is_active = 1 AND data_version = (SELECT data_version FROM public_catalog_meta WHERE id = 1) LIMIT 1').first();
-  return json({ catalogReady, places: data.results.map(p => ({ ...p, category: categoryFromFields(p), x: p.longitude, y: p.latitude, categoryName: p.category_name })) });
+  const meta = await env.DB.prepare('SELECT data_version FROM public_catalog_meta WHERE id = ?').bind(1).first();
+  const catalogPartial = String(meta?.data_version || '').endsWith('-partial');
+  return json({ catalogReady, catalogPartial, places: data.results.map(p => ({ ...p, category: categoryFromFields(p), x: p.longitude, y: p.latitude, categoryName: p.category_name })) });
 }

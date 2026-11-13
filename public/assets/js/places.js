@@ -133,6 +133,7 @@
       const data = await api(`/api/places/search?${params}`, { signal: searchAbort.signal }); if (requestedRegion !== region || version !== searchVersion || queryInput.value.trim() !== query) return;
       const places = data.places.filter(p => Number.isFinite(Number(p.x)) && Number.isFinite(Number(p.y)));
       searchStatus.textContent = places.length ? `공공 상가정보 기준일: ${places[0].data_version}` : data.catalogReady === false ? '장소 데이터가 아직 준비되지 않았어요.' : '이 지역에서 검색 결과를 찾지 못했어요.';
+      if (data.catalogPartial) searchStatus.textContent += ' 현재 일부 장소만 제공하므로 검색 결과가 빠질 수 있어요.';
       places.forEach(p => {
         const li = document.createElement('li'); const title = document.createElement('strong'); title.append(document.createTextNode(`${icons[category(p.category)]} `)); const name = document.createElement('span'); highlightName(name, p.name, query); title.append(name);
         const detail = document.createElement('p'); detail.textContent = [p.categoryName, p.address].filter(Boolean).join(' · ');

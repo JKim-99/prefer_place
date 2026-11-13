@@ -12,13 +12,14 @@ const categoryMapUrl = moduleUrl(read('lib/place-category-map.js'));
 const searchUrl = moduleUrl(read('functions/api/places/search.js').replace("'../../../lib/server/auth.js'", `'${authUrl}'`).replace("'../../../lib/server/place-auth.js'", `'${userUrl}'`).replace("'../../../lib/place-category-map.js'", `'${categoryMapUrl}'`));
 test('public place search requires a session and binds escaped regional substring search', async () => {
   const { onRequestGet } = await import(searchUrl); const calls = [];
-  const db = { prepare(sql) { return { bind(...args) { calls.push({sql,args}); return { first: async () => ({ id: 'user' }), all: async () => ({ results: [{ id:'biz:MA123', name:'테스트 카페', longitude:127, latitude:37, category:'restaurant', category_name:'카페', category_major:'음식', category_middle:'비알코올', category_version:2 }] }) }; } }; } };
+  const db = { prepare(sql) { return { bind(...args) { calls.push({sql,args}); return { first: async () => sql.includes('public_catalog_meta') ? ({ data_version: '20260930-partial' }) : ({ id: 'user' }), all: async () => ({ results: [{ id:'biz:MA123', name:'테스트 카페', longitude:127, latitude:37, category:'restaurant', category_name:'카페', category_major:'음식', category_middle:'비알코올', category_version:2 }] }) }; } }; } };
   const params = new URLSearchParams({q:'카페%_', sido:'서울특별시', district:'강남구'});
   const anonymous = new Request(`https://example.test/api/places/search?${params}`);
   assert.equal((await onRequestGet({ request: anonymous, env: { DB: db } })).status, 401);
   const request = new Request(anonymous.url, { headers: { Cookie: `place_session=${'a'.repeat(64)}` } });
   const response = await onRequestGet({ request, env: { DB: db } });
   const data = await response.json(); assert.equal(response.status, 200); assert.equal(data.places[0].id, 'biz:MA123');
+  assert.equal(data.catalogPartial, true);
   assert.equal(data.places[0].category, 'cafe');
   const query = calls.find(call => call.sql.includes('FROM public_places'));
   assert.match(query.sql, /category_major/);
