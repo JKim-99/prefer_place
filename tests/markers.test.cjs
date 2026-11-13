@@ -41,7 +41,7 @@ test('adding a search result gives the marker a stable bounded hit target', asyn
   };
   const place = { id: 'biz:MA123', name: '테스트 카페', x: '127', y: '37.5', category: 'cafe', address: '주소' };
   let failRecords = false;
-  const fetch = async url => { if (failRecords && url.startsWith('/api/places/records?')) throw new Error('network error'); return { ok: true, headers: { get: () => 'application/json' }, json: async () => url.startsWith('/api/places/search') ? { places: [place] } : url.startsWith('/api/places/records?') ? { records: [{ place_id: 'biz:MA123', name: '테스트 카페', longitude: 127, latitude: 37.5, category: 'cafe', alias: '' }] } : { ok: true } }; };
+  const fetch = async url => { if (failRecords && url.startsWith('/api/places/records?')) throw new Error('network error'); return { ok: true, headers: { get: () => 'application/json' }, json: async () => url.startsWith('/api/places/search') ? { places: [place] } : url.startsWith('/api/places/records?') ? { records: [{ place_id: 'biz:MA123', name: '테스트 카페', longitude: 127, latitude: 37.5, category: 'cafe', alias: '', tags: ['조용함'] }] } : { ok: true } }; };
   const context = { document, window: { placeCurrentUser: { id: 'u' }, confirm: () => false }, fetch, URLSearchParams, AbortController, setTimeout, clearTimeout, console };
   vm.runInNewContext(readFileSync(resolve(__dirname, '../public/assets/js/places.js'), 'utf8'), context);
   const shapes = [{ geometry: { type: 'Polygon', coordinates: [[[126,37],[128,37],[128,38],[126,38],[126,37]]] } }];
@@ -75,6 +75,11 @@ test('adding a search result gives the marker a stable bounded hit target', asyn
   assert.equal(emptyLayer.children.length, 0, 'visit filter hides matching map markers');
   get('map-visit-filter').value = 'all'; get('map-visit-filter').dispatch('change');
   assert.equal(get('saved-places').children.length, 1);
+  get('map-tag-filter').value = '산책'; get('map-tag-filter').dispatch('input');
+  assert.equal(get('saved-places').children.length, 0, 'tag filter hides nonmatching records');
+  get('map-tag-filter').value = '조용'; get('map-tag-filter').dispatch('input');
+  assert.equal(get('saved-places').children.length, 1, 'tag filter matches a private tag');
+  get('map-tag-filter').value = ''; get('map-tag-filter').dispatch('input');
   selected = ['restaurant']; legend.dispatch('change');
   assert.equal(get('saved-places').children.length, 0, 'list follows the category filter');
   failRecords = true; view.click(); await new Promise(resolve => setImmediate(resolve));
