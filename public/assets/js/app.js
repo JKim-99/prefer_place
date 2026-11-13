@@ -4,6 +4,7 @@
   const dialog = $('region-dialog');
   const sidoList = $('sido-list');
   const sigunguList = $('sigungu-list');
+  const regionSearch = $('region-search'), regionResults = $('region-search-results'), regionSearchStatus = $('region-search-status');
   const confirm = $('confirm-region');
   const svg = $('region-map');
   const NS = 'http://www.w3.org/2000/svg';
@@ -27,15 +28,36 @@
   function renderPicker() {
     sidoList.replaceChildren(); sigunguList.replaceChildren();
     const provinces = [...new Set(features.map((f) => f.properties.sidonm))];
-    provinces.forEach((name) => sidoList.append(button(name, name === sido, () => { sido = name; district = ''; renderPicker(); })));
+    provinces.forEach((name) => sidoList.append(button(name, name === sido, () => { sido = name; district = ''; regionSearch.value = ''; renderRegionSearch(); renderPicker(); })));
     if (!sido) { const p = document.createElement('p'); p.className = 'list-placeholder'; p.textContent = '먼저 시·도를 선택해 주세요.'; sigunguList.append(p); }
     else {
       const names = [...new Set(features.filter((f) => f.properties.sidonm === sido).map((f) => cityName(f.properties.sggnm)))].sort((a,b) => a.localeCompare(b, 'ko'));
-      names.forEach((name) => sigunguList.append(button(name, name === district, () => { district = name; renderPicker(); })));
+      names.forEach((name) => sigunguList.append(button(name, name === district, () => { district = name; regionSearch.value = ''; renderRegionSearch(); renderPicker(); })));
     }
-    confirm.disabled = !district;
+    confirm.disabled = !district || !!regionSearch.value.trim();
   }
-  function openPicker() { sido = chosen?.sido || ''; district = chosen?.district || ''; renderPicker(); dialog.showModal(); }
+  function renderRegionSearch() {
+    const term = regionSearch.value.trim().replace(/\s+/g, '').toLocaleLowerCase('ko');
+    regionResults.replaceChildren(); regionResults.hidden = !term; regionSearchStatus.textContent = '';
+    confirm.disabled = !district || !!term;
+    if (!term) return;
+    const unique = new Map();
+    features.forEach(feature => {
+      const province = feature.properties.sidonm, city = cityName(feature.properties.sggnm), key = `${province}|${city}`;
+      if (`${province}${city}`.replace(/\s+/g, '').toLocaleLowerCase('ko').includes(term)) unique.set(key, { sido: province, district: city });
+    });
+    const matches = [...unique.values()].sort((a, b) => `${a.sido} ${a.district}`.localeCompare(`${b.sido} ${b.district}`, 'ko'));
+    regionSearchStatus.textContent = matches.length ? `${matches.length}개 지역${matches.length > 25 ? ' 중 25개 표시' : ''}` : '일치하는 지역이 없어요.';
+    matches.slice(0, 25).forEach(region => {
+      const item = document.createElement('li');
+      item.append(button(`${region.sido} ${region.district}`, false, () => {
+        sido = region.sido; district = region.district; regionSearch.value = ''; renderRegionSearch(); renderPicker(); confirm.focus();
+      }));
+      regionResults.append(item);
+    });
+  }
+  regionSearch.addEventListener('input', renderRegionSearch);
+  function openPicker() { sido = chosen?.sido || ''; district = chosen?.district || ''; regionSearch.value = ''; renderRegionSearch(); renderPicker(); dialog.showModal(); }
   $('open-picker').addEventListener('click', openPicker);
   $('change-location').addEventListener('click', openPicker);
   $('close-picker').addEventListener('click', () => dialog.close());
