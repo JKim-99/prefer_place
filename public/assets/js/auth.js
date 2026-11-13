@@ -2,7 +2,7 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const dialog = $('auth-dialog'), form = $('auth-form'), error = $('auth-error');
-  let signup = false;
+  let signup = false, authEpoch = 0;
   const savedId = () => { try { return localStorage.getItem('prefer-place-login-id') || ''; } catch { return ''; } };
   function setMode(value) {
     if (!form || !error) return;
@@ -22,6 +22,7 @@
     $('auth-switch').textContent = signup ? '로그인' : '회원가입';
   }
   function showUser(user) {
+    authEpoch++;
     window.placeCurrentUser = user;
     if ($('auth-open')) $('auth-open').hidden = !!user;
     if ($('auth-logout')) $('auth-logout').hidden = !user;
@@ -53,15 +54,18 @@
     try { const response = await fetch('/api/auth/me', { method: 'DELETE' }); if (!response.ok) throw new Error(); showUser(null); if (document.body.classList.contains('mypage-route') && dialog && !dialog.open) { setMode(false); dialog.showModal(); } }
     catch { alert('로그아웃을 처리하지 못했습니다. 다시 시도해 주세요.'); }
   });
+  const initialAuthEpoch = authEpoch;
   fetch('/api/auth/me').then(response => response.ok ? response.json() : null).then(data => {
+    if (initialAuthEpoch !== authEpoch) return;
     const user = data?.user || null;
     showUser(user);
     const profilePage = $('profile-page');
     if (profilePage && document.body.classList.contains('mypage-route')) {
       profilePage.hidden = !user;
-      if (!user && dialog) { setMode(false); dialog.showModal(); }
+      if (!user && dialog && !dialog.open) { setMode(false); dialog.showModal(); }
     }
   }).catch(() => {
+    if (initialAuthEpoch !== authEpoch) return;
     showUser(null);
     const profilePage = $('profile-page');
     if (profilePage) {

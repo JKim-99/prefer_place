@@ -3,7 +3,7 @@
   const $ = id => document.getElementById(id), dialog = $('mypage-dialog'), profilePage = document.body.classList.contains('mypage-route') ? $('profile-page') : null;
   const icons = { restaurant: '🍴', cafe: '☕', stay: '🛏', shopping: '🛍', beauty: '💇', medical: '⚕️', culture: '🎭', education: '📚', other: '📍' };
   const labels = { restaurant: '음식점', cafe: '카페·디저트', stay: '숙박', shopping: '쇼핑', beauty: '미용', medical: '의료', culture: '문화', education: '교육', other: '기타' };
-  let avatar = null, records = [], category = 'all';
+  let avatar = null, records = [], category = 'all', authEpoch = 0, loadGeneration = 0;
   const drafts = new Map();
   async function api(url, options) {
     const response = await fetch(url, options); const data = await response.json();
@@ -26,6 +26,7 @@
   $('mypage-close')?.addEventListener('click', () => dialog.close());
   dialog?.querySelectorAll('[data-tab]').forEach(button => button.addEventListener('click', () => selectTab(button.dataset.tab)));
   document.addEventListener('place-auth-change', event => {
+    authEpoch++; loadGeneration++;
     if (!event.detail.signedIn) {
       drafts.clear(); records = []; avatar = null;
       if (profilePage) {
@@ -33,6 +34,7 @@
         $('mypage-place-list').replaceChildren();
         $('profile-form').reset(); $('password-form').reset();
         $('place-record-search').value = ''; $('place-visit-filter').value = 'all'; category = 'all';
+        $('export-places').disabled = true;
         dialog.querySelectorAll('[data-category]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.category === 'all')));
         $('profile-status').textContent = ''; $('password-status').textContent = ''; $('mypage-places-status').textContent = '';
         showAvatar();
@@ -54,20 +56,22 @@
   $('avatar-remove')?.addEventListener('click', () => { avatar = null; if ($('profile-avatar')) $('profile-avatar').value = ''; showAvatar(); });
   $('profile-form')?.addEventListener('submit', async event => {
     event.preventDefault(); const status = $('profile-status'), submit = event.currentTarget.querySelector('[type=submit]'); submit.disabled = true;
-    try { const result = await patch({ action: 'profile', username: $('profile-username').value, nickname: $('profile-nickname').value, gender: $('profile-gender').value, avatar }); window.placeShowUser(result.user); fillProfile(result.user); status.textContent = '내 정보를 저장했습니다.'; }
-    catch (error) { status.textContent = error.message; } finally { submit.disabled = false; }
+    const epoch = authEpoch;
+    try { const result = await patch({ action: 'profile', username: $('profile-username').value, nickname: $('profile-nickname').value, gender: $('profile-gender').value, avatar }); if (epoch !== authEpoch) return; window.placeShowUser(result.user); fillProfile(result.user); status.textContent = '내 정보를 저장했습니다.'; }
+    catch (error) { if (epoch === authEpoch) status.textContent = error.message; } finally { submit.disabled = false; }
   });
   $('password-form')?.addEventListener('submit', async event => {
     event.preventDefault(); const status = $('password-status'), form = event.currentTarget, data = Object.fromEntries(new FormData(form));
     if (data.newPassword !== data.passwordConfirm) { status.textContent = '새 비밀번호 확인이 일치하지 않습니다.'; return; }
-    const submit = form.querySelector('[type=submit]'); submit.disabled = true;
-    try { await patch({ action: 'password', ...data }); form.reset(); status.textContent = '비밀번호를 변경했습니다. 다른 기기의 로그인은 해제됩니다.'; }
-    catch (error) { status.textContent = error.message; } finally { submit.disabled = false; }
+    const submit = form.querySelector('[type=submit]'); submit.disabled = true; const epoch = authEpoch;
+    try { await patch({ action: 'password', ...data }); if (epoch !== authEpoch) return; form.reset(); status.textContent = '비밀번호를 변경했습니다. 다른 기기의 로그인은 해제됩니다.'; }
+    catch (error) { if (epoch === authEpoch) status.textContent = error.message; } finally { submit.disabled = false; }
   });
   function renderPlaces() {
     const query = ($('place-record-search')?.value || '').trim().toLocaleLowerCase();
     const filter = $('place-visit-filter')?.value ?? 'all';
     const list = $('mypage-place-list'); list.replaceChildren();
+    $('export-places').disabled = !records.length;
     const visible = records.filter(record => (category === 'all' || record.category === category) && (filter === 'all' || (record.visit_status || '') === filter) && [record.alias, record.name, record.address, record.region_sido, record.region_district, record.note, ...(record.tags || [])].some(value => (value || '').toLocaleLowerCase().includes(query)));
     $('mypage-places-status').textContent = visible.length ? `${visible.length}개의 장소` : (records.length ? '조건에 맞는 장소가 없어요.' : '아직 저장한 장소가 없어요. 지도에서 장소를 추가해 보세요.');
     visible.forEach(record => {
@@ -76,7 +80,7 @@
       link.textContent = `${icons[record.category] || icons.other} ${record.alias || record.name || '기존 카카오 장소 보기'}${record.name ? '' : ' ↗'}`;
       region.textContent = `${record.region_sido} ${record.region_district} · ${labels[record.category] || labels.other}`; info.append(link, region);
       toggle.type = 'button'; toggle.textContent = record.is_public ? '공개' : '비공개'; toggle.setAttribute('aria-pressed', String(!!record.is_public)); toggle.setAttribute('aria-label', `${record.alias || record.name || '장소'} 공개 설정: ${toggle.textContent}`);
-      toggle.addEventListener('click', async () => { if (!record.is_public && !window.confirm('이 장소의 이름과 위치가 익명 장소 탐색에 표시될 수 있습니다. 메모, 방문 상태와 태그는 공개되지 않습니다. 공개할까요?')) return; toggle.disabled = true; try { await api('/api/places/records', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ placeId: record.place_id, isPublic: !record.is_public }) }); record.is_public = record.is_public ? 0 : 1; toggle.textContent = record.is_public ? '공개' : '비공개'; toggle.setAttribute('aria-pressed', String(!!record.is_public)); toggle.setAttribute('aria-label', `${record.alias || record.name || '장소'} 공개 설정: ${toggle.textContent}`); document.dispatchEvent(new CustomEvent('place-records-change')); } catch (error) { $('mypage-places-status').textContent = error.message; } finally { toggle.disabled = false; } });
+      toggle.addEventListener('click', async () => { if (!record.is_public && !window.confirm('이 장소의 이름과 위치가 익명 장소 탐색에 표시될 수 있습니다. 메모, 방문 상태와 태그는 공개되지 않습니다. 공개할까요?')) return; toggle.disabled = true; const epoch = authEpoch; try { await api('/api/places/records', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ placeId: record.place_id, isPublic: !record.is_public }) }); if (epoch !== authEpoch) return; record.is_public = record.is_public ? 0 : 1; toggle.textContent = record.is_public ? '공개' : '비공개'; toggle.setAttribute('aria-pressed', String(!!record.is_public)); toggle.setAttribute('aria-label', `${record.alias || record.name || '장소'} 공개 설정: ${toggle.textContent}`); document.dispatchEvent(new CustomEvent('place-records-change')); } catch (error) { if (epoch === authEpoch) $('mypage-places-status').textContent = error.message; } finally { toggle.disabled = false; } });
       const editor = document.createElement('form'), noteLabel = document.createElement('label'), note = document.createElement('textarea'), visitLabel = document.createElement('label'), visit = document.createElement('select'), tagLabel = document.createElement('label'), tagInput = document.createElement('input'), save = document.createElement('button'), message = document.createElement('p');
       editor.className = 'place-record-editor';
       const draft = drafts.get(record.place_id) || { note: record.note || '', visitStatus: record.visit_status || '', tags: (record.tags || []).join(', ') };
@@ -90,16 +94,24 @@
       editor.append(noteLabel, visitLabel, tagLabel, save, message);
       editor.addEventListener('submit', async event => {
         event.preventDefault(); save.disabled = true; message.textContent = '저장 중...';
-        const tagText = tagInput.value, saved = { note: note.value, visitStatus: visit.value, tags: tagText.split(',').map(tag => tag.trim()).filter(Boolean) };
-        try { await api('/api/places/records', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'details', placeId: record.place_id, ...saved }) }); record.note = saved.note; record.visit_status = saved.visitStatus; record.tags = saved.tags; if (note.value === saved.note && visit.value === saved.visitStatus && tagInput.value === tagText) drafts.delete(record.place_id); message.textContent = '기록을 저장했습니다.'; }
-        catch (error) { message.textContent = error.message; } finally { save.disabled = false; }
+        const epoch = authEpoch, tagText = tagInput.value, saved = { note: note.value, visitStatus: visit.value, tags: tagText.split(',').map(tag => tag.trim()).filter(Boolean) };
+        try { await api('/api/places/records', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'details', placeId: record.place_id, ...saved }) }); if (epoch !== authEpoch) return; record.note = saved.note; record.visit_status = saved.visitStatus; record.tags = saved.tags; if (note.value === saved.note && visit.value === saved.visitStatus && tagInput.value === tagText) drafts.delete(record.place_id); message.textContent = '기록을 저장했습니다.'; }
+        catch (error) { if (epoch === authEpoch) message.textContent = error.message; } finally { save.disabled = false; }
       });
       const details = document.createElement('details'), summary = document.createElement('summary'); summary.textContent = '메모와 방문 상태'; details.append(summary, editor);
       info.append(details); li.append(info, toggle); list.append(li);
     });
   }
-  async function loadPlaces() { $('mypage-places-status').textContent = '불러오는 중...'; try { records = (await api('/api/places/records?mode=mypage')).records || []; renderPlaces(); } catch (error) { $('mypage-places-status').textContent = error.message; } }
+  async function loadPlaces() { const generation = ++loadGeneration, epoch = authEpoch; records = []; $('mypage-place-list').replaceChildren(); $('export-places').disabled = true; $('mypage-places-status').textContent = '불러오는 중...'; try { const result = await api('/api/places/records?mode=mypage'); if (generation !== loadGeneration || epoch !== authEpoch) return; records = result.records || []; renderPlaces(); } catch (error) { if (generation === loadGeneration && epoch === authEpoch) $('mypage-places-status').textContent = error.message; } }
   dialog?.querySelectorAll('[data-category]').forEach(button => button.addEventListener('click', () => { category = button.dataset.category; dialog.querySelectorAll('[data-category]').forEach(item => item.setAttribute('aria-pressed', String(item === button))); renderPlaces(); }));
   $('place-record-search')?.addEventListener('input', renderPlaces);
   $('place-visit-filter')?.addEventListener('change', renderPlaces);
+  $('export-places')?.addEventListener('click', () => {
+    if (!window.placeCurrentUser || !records.length) return;
+    const exportedAt = new Date().toISOString();
+    const payload = { format: 'prefer-place-records-v1', exportedAt, records: records.map(record => ({ placeId: record.place_id, name: record.name || '', alias: record.alias || '', address: record.address || '', sido: record.region_sido, district: record.region_district, category: record.category, latitude: record.latitude ?? null, longitude: record.longitude ?? null, note: record.note || '', visitStatus: record.visit_status || '', tags: record.tags || [], isPublic: !!record.is_public })) };
+    const objectUrl = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], {type:'application/json;charset=utf-8'}));
+    const link = document.createElement('a'); link.href = objectUrl; link.download = `prefer-place-${exportedAt.slice(0,10)}.json`; document.body.append(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  });
 })();
