@@ -1,0 +1,1 @@
+ALTER TABLE place_records ADD COLUMN tags TEXT NOT NULL DEFAULT '[]';

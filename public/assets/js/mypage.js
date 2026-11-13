@@ -57,7 +57,7 @@
     const query = ($('place-record-search')?.value || '').trim().toLocaleLowerCase();
     const filter = $('place-visit-filter')?.value ?? 'all';
     const list = $('mypage-place-list'); list.replaceChildren();
-    const visible = records.filter(record => (category === 'all' || record.category === category) && (filter === 'all' || (record.visit_status || '') === filter) && [record.alias, record.name, record.address, record.region_sido, record.region_district, record.note].some(value => (value || '').toLocaleLowerCase().includes(query)));
+    const visible = records.filter(record => (category === 'all' || record.category === category) && (filter === 'all' || (record.visit_status || '') === filter) && [record.alias, record.name, record.address, record.region_sido, record.region_district, record.note, ...(record.tags || [])].some(value => (value || '').toLocaleLowerCase().includes(query)));
     $('mypage-places-status').textContent = visible.length ? `${visible.length}개의 장소` : (records.length ? '조건에 맞는 장소가 없어요.' : '아직 저장한 장소가 없어요. 지도에서 장소를 추가해 보세요.');
     visible.forEach(record => {
       const li = document.createElement('li'), info = document.createElement('div'), link = document.createElement('a'), region = document.createElement('small'), toggle = document.createElement('button');
@@ -66,20 +66,21 @@
       region.textContent = `${record.region_sido} ${record.region_district} · ${labels[record.category] || labels.other}`; info.append(link, region);
       toggle.type = 'button'; toggle.textContent = record.is_public ? '공개' : '비공개'; toggle.setAttribute('aria-pressed', String(!!record.is_public)); toggle.setAttribute('aria-label', `${record.alias || record.name || '장소'} 공개 설정: ${toggle.textContent}`);
       toggle.addEventListener('click', async () => { toggle.disabled = true; try { await api('/api/places/records', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ placeId: record.place_id, isPublic: !record.is_public }) }); record.is_public = record.is_public ? 0 : 1; toggle.textContent = record.is_public ? '공개' : '비공개'; toggle.setAttribute('aria-pressed', String(!!record.is_public)); toggle.setAttribute('aria-label', `${record.alias || record.name || '장소'} 공개 설정: ${toggle.textContent}`); document.dispatchEvent(new CustomEvent('place-records-change')); } catch (error) { $('mypage-places-status').textContent = error.message; } finally { toggle.disabled = false; } });
-      const editor = document.createElement('form'), noteLabel = document.createElement('label'), note = document.createElement('textarea'), visitLabel = document.createElement('label'), visit = document.createElement('select'), save = document.createElement('button'), message = document.createElement('p');
+      const editor = document.createElement('form'), noteLabel = document.createElement('label'), note = document.createElement('textarea'), visitLabel = document.createElement('label'), visit = document.createElement('select'), tagLabel = document.createElement('label'), tagInput = document.createElement('input'), save = document.createElement('button'), message = document.createElement('p');
       editor.className = 'place-record-editor';
-      const draft = drafts.get(record.place_id) || { note: record.note || '', visitStatus: record.visit_status || '' };
+      const draft = drafts.get(record.place_id) || { note: record.note || '', visitStatus: record.visit_status || '', tags: (record.tags || []).join(', ') };
       noteLabel.textContent = '나만의 메모'; note.maxLength = 1000; note.rows = 3; note.value = draft.note; noteLabel.append(note);
       visitLabel.textContent = '방문 상태';
       [['', '선택하지 않음'], ['want', '가보고 싶은 곳'], ['visited', '방문한 곳'], ['again', '다시 가고 싶은 곳']].forEach(([value, text]) => { const option = document.createElement('option'); option.value = value; option.textContent = text; visit.append(option); });
       visit.value = draft.visitStatus; visitLabel.append(visit); save.type = 'submit'; save.textContent = '기록 저장'; message.setAttribute('role', 'status');
-      const rememberDraft = () => drafts.set(record.place_id, { note: note.value, visitStatus: visit.value });
-      note.addEventListener('input', rememberDraft); visit.addEventListener('change', rememberDraft);
-      editor.append(noteLabel, visitLabel, save, message);
+      tagLabel.textContent = '나만의 태그 (쉼표로 구분, 최대 8개)'; tagInput.type = 'text'; tagInput.maxLength = 167; tagInput.placeholder = '예: 조용함, 작업하기 좋은'; tagInput.value = draft.tags; tagLabel.append(tagInput);
+      const rememberDraft = () => drafts.set(record.place_id, { note: note.value, visitStatus: visit.value, tags: tagInput.value });
+      note.addEventListener('input', rememberDraft); visit.addEventListener('change', rememberDraft); tagInput.addEventListener('input', rememberDraft);
+      editor.append(noteLabel, visitLabel, tagLabel, save, message);
       editor.addEventListener('submit', async event => {
         event.preventDefault(); save.disabled = true; message.textContent = '저장 중...';
-        const saved = { note: note.value, visitStatus: visit.value };
-        try { await api('/api/places/records', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'details', placeId: record.place_id, ...saved }) }); record.note = saved.note; record.visit_status = saved.visitStatus; if (note.value === saved.note && visit.value === saved.visitStatus) drafts.delete(record.place_id); message.textContent = '기록을 저장했습니다.'; }
+        const tagText = tagInput.value, saved = { note: note.value, visitStatus: visit.value, tags: tagText.split(',').map(tag => tag.trim()).filter(Boolean) };
+        try { await api('/api/places/records', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'details', placeId: record.place_id, ...saved }) }); record.note = saved.note; record.visit_status = saved.visitStatus; record.tags = saved.tags; if (note.value === saved.note && visit.value === saved.visitStatus && tagInput.value === tagText) drafts.delete(record.place_id); message.textContent = '기록을 저장했습니다.'; }
         catch (error) { message.textContent = error.message; } finally { save.disabled = false; }
       });
       const details = document.createElement('details'), summary = document.createElement('summary'); summary.textContent = '메모와 방문 상태'; details.append(summary, editor);

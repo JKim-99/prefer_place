@@ -51,12 +51,17 @@ test('personal notes and visit state are validated and scoped to the owner', asy
   assert.equal((await onRequestPatch({request: request('/api/places/records', details, false), env: {DB: db}})).status, 401);
   assert.equal((await onRequestPatch({request: request('/api/places/records', {...details, note: 'x'.repeat(1001)}), env: {DB: db}})).status, 400);
   assert.equal((await onRequestPatch({request: request('/api/places/records', {...details, visitStatus: 'invalid'}), env: {DB: db}})).status, 400);
+  assert.equal((await onRequestPatch({request: request('/api/places/records', {...details, tags: Array(9).fill('tag')}), env: {DB: db}})).status, 400);
+  assert.equal((await onRequestPatch({request: request('/api/places/records', {...details, tags: ['카페','카페']}), env: {DB: db}})).status, 400);
   assert.equal((await onRequestPatch({request: request('/api/places/records', {...details, placeId: 'biz:missing'}), env: {DB: db}})).status, 404);
   assert.equal((await onRequestPatch({request: request('/api/places/records', details), env: {DB: db}})).status, 200);
   const update = calls.findLast(c => c.sql.startsWith('UPDATE place_records SET note'));
   assert.match(update.sql, /WHERE user_id = \? AND place_id = \?/);
   assert.deepEqual(update.args, ['조용한 곳', 'again', 'owner', 'biz:abc']);
+  assert.equal((await onRequestPatch({request: request('/api/places/records', {...details, tags: [' 조용함 ', '산책']}), env: {DB: db}})).status, 200);
+  const tagUpdate = calls.findLast(c => c.sql.includes('visit_status = ?, tags = ?'));
+  assert.deepEqual(tagUpdate.args, ['조용한 곳', 'again', '["조용함","산책"]', 'owner', 'biz:abc']);
   await onRequestGet({request: new Request('https://example.test/api/places/records?mode=anonymous&sido=A&district=B'), env: {DB: db}});
   const publicQuery = calls.at(-1).sql;
-  assert.doesNotMatch(publicQuery, /r\.note|r\.visit_status/);
+  assert.doesNotMatch(publicQuery, /r\.note|r\.visit_status|r\.tags/);
 });

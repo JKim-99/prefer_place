@@ -11,8 +11,8 @@ export async function onRequestGet({ request, env }) {
   if (mode === 'mypage' || mode === 'mine') {
     const user = await currentUser(request, env.DB); if (!user) return json({ error: '로그인이 필요합니다.' }, 401);
     if (mode === 'mine' && (!sido || !district || sido.length > 40 || district.length > 40)) return json({ error: '지역을 확인해 주세요.' }, 400);
-    const statement = mode === 'mypage' ? env.DB.prepare(`SELECT ${columns}, r.note, r.visit_status ${join} WHERE r.user_id = ? ORDER BY r.created_at DESC`).bind(user.id) : env.DB.prepare(`SELECT ${columns}, r.note, r.visit_status ${join} WHERE r.user_id = ? AND r.region_sido = ? AND r.region_district = ? ORDER BY r.created_at DESC LIMIT 100`).bind(user.id, sido, district);
-    return json({ records: (await statement.all()).results.map(withCategory) });
+    const statement = mode === 'mypage' ? env.DB.prepare(`SELECT ${columns}, r.note, r.visit_status, r.tags ${join} WHERE r.user_id = ? ORDER BY r.created_at DESC`).bind(user.id) : env.DB.prepare(`SELECT ${columns}, r.note, r.visit_status, r.tags ${join} WHERE r.user_id = ? AND r.region_sido = ? AND r.region_district = ? ORDER BY r.created_at DESC LIMIT 100`).bind(user.id, sido, district);
+    return json({ records: (await statement.all()).results.map(withPrivateData) });
   }
   if (!sido || !district || sido.length > 40 || district.length > 40) return json({ error: '지역을 확인해 주세요.' }, 400);
   if (mode === 'popular') {
@@ -27,6 +27,11 @@ export async function onRequestGet({ request, env }) {
 }
 function withCategory(record) {
   return { ...record, category: categoryFromFields(record) };
+}
+function withPrivateData(record) {
+  let tags = [];
+  try { const value = JSON.parse(record.tags); if (Array.isArray(value)) tags = value.filter(tag => typeof tag === 'string'); } catch { /* Malformed legacy data stays private. */ }
+  return { ...withCategory(record), tags };
 }
 export async function onRequestPost({ request, env }) {
   if (!env.DB) return json({ error: '데이터베이스가 설정되지 않았습니다.' }, 503);
@@ -61,7 +66,14 @@ export async function onRequestPatch({ request, env }) {
   let statement;
   if (body.action === 'details') {
     if (typeof body.note !== 'string' || body.note.length > 1000 || !['', 'want', 'visited', 'again'].includes(body.visitStatus)) return json({ error: '메모 또는 방문 상태를 확인해 주세요.' }, 400);
-    statement = env.DB.prepare('UPDATE place_records SET note = ?, visit_status = ? WHERE user_id = ? AND place_id = ?').bind(body.note, body.visitStatus, user.id, body.placeId);
+    if (body.tags === undefined) {
+      statement = env.DB.prepare('UPDATE place_records SET note = ?, visit_status = ? WHERE user_id = ? AND place_id = ?').bind(body.note, body.visitStatus, user.id, body.placeId);
+    } else {
+      if (!Array.isArray(body.tags) || body.tags.length > 8 || body.tags.some(tag => typeof tag !== 'string' || !tag.trim() || tag.trim().length > 20 || /[,\u0000-\u001f\u007f]/.test(tag))) return json({ error: '태그는 쉼표 없이 20자 이내로 최대 8개까지 입력해 주세요.' }, 400);
+      const tags = body.tags.map(tag => tag.trim());
+      if (new Set(tags.map(tag => tag.toLocaleLowerCase('ko'))).size !== tags.length) return json({ error: '같은 태그는 한 번만 입력해 주세요.' }, 400);
+      statement = env.DB.prepare('UPDATE place_records SET note = ?, visit_status = ?, tags = ? WHERE user_id = ? AND place_id = ?').bind(body.note, body.visitStatus, JSON.stringify(tags), user.id, body.placeId);
+    }
   } else {
     if (body.action !== undefined || typeof body.isPublic !== 'boolean') return json({ error: '공개 설정을 확인해 주세요.' }, 400);
     statement = env.DB.prepare('UPDATE place_records SET is_public = ? WHERE user_id = ? AND place_id = ?').bind(body.isPublic ? 1 : 0, user.id, body.placeId);
