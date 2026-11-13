@@ -4,6 +4,7 @@
   const icons = { restaurant: '🍴', cafe: '☕', stay: '🛏', shopping: '🛍', beauty: '💇', medical: '⚕️', culture: '🎭', education: '📚', other: '📍' };
   const labels = { restaurant: '음식점', cafe: '카페·디저트', stay: '숙박', shopping: '쇼핑', beauty: '미용', medical: '의료', culture: '문화', education: '교육', other: '기타' };
   let avatar = null, records = [], category = 'all';
+  const drafts = new Map();
   async function api(url, options) {
     const response = await fetch(url, options); const data = await response.json();
     if (!response.ok) throw new Error(data.error || '요청을 처리하지 못했습니다.'); return data;
@@ -25,6 +26,7 @@
   $('mypage-close')?.addEventListener('click', () => dialog.close());
   dialog?.querySelectorAll('[data-tab]').forEach(button => button.addEventListener('click', () => selectTab(button.dataset.tab)));
   document.addEventListener('place-auth-change', event => {
+    if (!event.detail.signedIn) { drafts.clear(); records = []; }
     if (!event.detail.signedIn && dialog?.open) dialog.close();
     if (profilePage && event.detail.signedIn) { profilePage.hidden = false; fillProfile(event.detail.user); selectTab('profile'); }
   });
@@ -52,30 +54,40 @@
     catch (error) { status.textContent = error.message; } finally { submit.disabled = false; }
   });
   function renderPlaces() {
-    const list = $('mypage-place-list'); list.replaceChildren(); const visible = records.filter(record => category === 'all' || record.category === category);
-    $('mypage-places-status').textContent = visible.length ? `${visible.length}개의 장소` : '이 카테고리에 저장된 장소가 없어요.';
+    const query = ($('place-record-search')?.value || '').trim().toLocaleLowerCase();
+    const filter = $('place-visit-filter')?.value ?? 'all';
+    const list = $('mypage-place-list'); list.replaceChildren();
+    const visible = records.filter(record => (category === 'all' || record.category === category) && (filter === 'all' || (record.visit_status || '') === filter) && [record.alias, record.name, record.address, record.region_sido, record.region_district, record.note].some(value => (value || '').toLocaleLowerCase().includes(query)));
+    $('mypage-places-status').textContent = visible.length ? `${visible.length}개의 장소` : (records.length ? '조건에 맞는 장소가 없어요.' : '아직 저장한 장소가 없어요. 지도에서 장소를 추가해 보세요.');
     visible.forEach(record => {
       const li = document.createElement('li'), info = document.createElement('div'), link = document.createElement('a'), region = document.createElement('small'), toggle = document.createElement('button');
       if (/^\d+$/.test(record.place_id)) { link.href = `https://place.map.kakao.com/${encodeURIComponent(record.place_id)}`; link.target = '_blank'; link.rel = 'noopener noreferrer'; }
       link.textContent = `${icons[record.category] || icons.other} ${record.alias || record.name || '기존 카카오 장소 보기'}${record.name ? '' : ' ↗'}`;
       region.textContent = `${record.region_sido} ${record.region_district} · ${labels[record.category] || labels.other}`; info.append(link, region);
       toggle.type = 'button'; toggle.textContent = record.is_public ? '공개' : '비공개'; toggle.setAttribute('aria-pressed', String(!!record.is_public)); toggle.setAttribute('aria-label', `${record.alias || record.name || '장소'} 공개 설정: ${toggle.textContent}`);
-      toggle.addEventListener('click', async () => { toggle.disabled = true; try { await api('/api/places/records', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ placeId: record.place_id, isPublic: !record.is_public }) }); record.is_public = record.is_public ? 0 : 1; renderPlaces(); document.dispatchEvent(new CustomEvent('place-records-change')); } catch (error) { $('mypage-places-status').textContent = error.message; toggle.disabled = false; } });
+      toggle.addEventListener('click', async () => { toggle.disabled = true; try { await api('/api/places/records', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ placeId: record.place_id, isPublic: !record.is_public }) }); record.is_public = record.is_public ? 0 : 1; toggle.textContent = record.is_public ? '공개' : '비공개'; toggle.setAttribute('aria-pressed', String(!!record.is_public)); toggle.setAttribute('aria-label', `${record.alias || record.name || '장소'} 공개 설정: ${toggle.textContent}`); document.dispatchEvent(new CustomEvent('place-records-change')); } catch (error) { $('mypage-places-status').textContent = error.message; } finally { toggle.disabled = false; } });
       const editor = document.createElement('form'), noteLabel = document.createElement('label'), note = document.createElement('textarea'), visitLabel = document.createElement('label'), visit = document.createElement('select'), save = document.createElement('button'), message = document.createElement('p');
       editor.className = 'place-record-editor';
-      noteLabel.textContent = '나만의 메모'; note.maxLength = 1000; note.rows = 3; note.value = record.note || ''; noteLabel.append(note);
+      const draft = drafts.get(record.place_id) || { note: record.note || '', visitStatus: record.visit_status || '' };
+      noteLabel.textContent = '나만의 메모'; note.maxLength = 1000; note.rows = 3; note.value = draft.note; noteLabel.append(note);
       visitLabel.textContent = '방문 상태';
       [['', '선택하지 않음'], ['want', '가보고 싶은 곳'], ['visited', '방문한 곳'], ['again', '다시 가고 싶은 곳']].forEach(([value, text]) => { const option = document.createElement('option'); option.value = value; option.textContent = text; visit.append(option); });
-      visit.value = record.visit_status || ''; visitLabel.append(visit); save.type = 'submit'; save.textContent = '기록 저장'; message.setAttribute('role', 'status');
+      visit.value = draft.visitStatus; visitLabel.append(visit); save.type = 'submit'; save.textContent = '기록 저장'; message.setAttribute('role', 'status');
+      const rememberDraft = () => drafts.set(record.place_id, { note: note.value, visitStatus: visit.value });
+      note.addEventListener('input', rememberDraft); visit.addEventListener('change', rememberDraft);
       editor.append(noteLabel, visitLabel, save, message);
       editor.addEventListener('submit', async event => {
         event.preventDefault(); save.disabled = true; message.textContent = '저장 중...';
-        try { await api('/api/places/records', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'details', placeId: record.place_id, note: note.value, visitStatus: visit.value }) }); record.note = note.value; record.visit_status = visit.value; message.textContent = '기록을 저장했습니다.'; }
+        const saved = { note: note.value, visitStatus: visit.value };
+        try { await api('/api/places/records', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'details', placeId: record.place_id, ...saved }) }); record.note = saved.note; record.visit_status = saved.visitStatus; if (note.value === saved.note && visit.value === saved.visitStatus) drafts.delete(record.place_id); message.textContent = '기록을 저장했습니다.'; }
         catch (error) { message.textContent = error.message; } finally { save.disabled = false; }
       });
-      info.append(editor); li.append(info, toggle); list.append(li);
+      const details = document.createElement('details'), summary = document.createElement('summary'); summary.textContent = '메모와 방문 상태'; details.append(summary, editor);
+      info.append(details); li.append(info, toggle); list.append(li);
     });
   }
   async function loadPlaces() { $('mypage-places-status').textContent = '불러오는 중...'; try { records = (await api('/api/places/records?mode=mypage')).records || []; renderPlaces(); } catch (error) { $('mypage-places-status').textContent = error.message; } }
   dialog?.querySelectorAll('[data-category]').forEach(button => button.addEventListener('click', () => { category = button.dataset.category; dialog.querySelectorAll('[data-category]').forEach(item => item.setAttribute('aria-pressed', String(item === button))); renderPlaces(); }));
+  $('place-record-search')?.addEventListener('input', renderPlaces);
+  $('place-visit-filter')?.addEventListener('change', renderPlaces);
 })();
