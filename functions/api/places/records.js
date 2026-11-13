@@ -1,6 +1,7 @@
 import { json, readBody, sameOrigin } from '../../../lib/server/auth.js';
 import { currentUser } from '../../../lib/server/place-auth.js';
 import { categoryFromFields } from '../../../lib/place-category-map.js';
+import { lookupPlace } from '../../../lib/server/catalog-lookup.js';
 const validId = id => /^(?:\d{1,30}|biz:[A-Za-z0-9]{1,40})$/.test(id || '');
 const columns = `r.place_id, r.alias, r.is_public, r.region_sido, r.region_district, CASE WHEN p.id IS NULL THEN 'other' ELSE p.category END AS category, p.name, p.address, p.category_name, p.category_major, p.category_middle, p.category_version, p.longitude, p.latitude, COALESCE(p.source_version, p.data_version) AS data_version`;
 const join = ' FROM place_records r LEFT JOIN public_places p ON p.id = r.place_id ';
@@ -33,8 +34,15 @@ export async function onRequestPost({ request, env }) {
   const user = await currentUser(request, env.DB); if (!user) return json({ error: '로그인이 필요합니다.' }, 401);
   const { placeId, sido, district } = body;
   if (!/^biz:[A-Za-z0-9]{1,40}$/.test(placeId || '') || typeof sido !== 'string' || typeof district !== 'string') return json({ error: '장소 정보를 확인해 주세요.' }, 400);
-  const place = await env.DB.prepare('SELECT id, category FROM public_places WHERE id = ? AND region_sido = ? AND region_district = ?').bind(placeId, sido, district).first();
-  if (!place) return json({ error: '선택한 지역의 장소를 찾을 수 없습니다.' }, 404);
+  if (!sido || sido.length > 40 || !district || district.length > 40) return json({ error: '지역을 확인해 주세요.' }, 400);
+  let place = await env.DB.prepare('SELECT id, category FROM public_places WHERE id = ? AND region_sido = ? AND region_district = ?').bind(placeId, sido, district).first();
+  if (!place) {
+    try {
+      const p = await lookupPlace(env.PUBLIC_DATA_API_KEY, placeId, sido, district);
+      await env.DB.prepare(`INSERT OR IGNORE INTO public_places (id,name,address,category,category_name,category_major,category_middle,region_sido,region_district,longitude,latitude,data_version,source_version,is_active,category_version) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,1,2)`).bind(p.id,p.name,p.address,p.category,p.detail,p.major,p.middle,p.sido,p.district,p.lon,p.lat,'lookup',p.version).run();
+      place = { id: p.id, category: p.category };
+    } catch (error) { return json({ error: error.message }, 502); }
+  }
   await env.DB.prepare(`INSERT INTO place_records (user_id, place_id, region_sido, region_district, alias, is_public, created_at, category) VALUES (?, ?, ?, ?, '', 0, ?, ?) ON CONFLICT(user_id, place_id) DO NOTHING`).bind(user.id, placeId, sido, district, Math.floor(Date.now()/1000), place.category).run();
   return json({ ok: true });
 }

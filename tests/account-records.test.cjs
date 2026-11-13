@@ -9,7 +9,9 @@ const url = code => `data:text/javascript;base64,${Buffer.from(code).toString('b
 const authUrl = url(read('lib/server/auth.js'));
 const userUrl = url(read('lib/server/place-auth.js').replace("'./auth.js'", `'${authUrl}'`));
 const categoryMapUrl = url(read('lib/place-category-map.js'));
-const recordsUrl = url(read('functions/api/places/records.js').replace("'../../../lib/server/auth.js'", `'${authUrl}'`).replace("'../../../lib/server/place-auth.js'", `'${userUrl}'`).replace("'../../../lib/place-category-map.js'", `'${categoryMapUrl}'`));
+const categoryUrl = url(read('lib/place-categories.js'));
+const lookupUrl = url(read('lib/server/catalog-lookup.js').replace("'../place-categories.js'", `'${categoryUrl}'`));
+const recordsUrl = url(read('functions/api/places/records.js').replace("'../../../lib/server/auth.js'", `'${authUrl}'`).replace("'../../../lib/server/place-auth.js'", `'${userUrl}'`).replace("'../../../lib/place-category-map.js'", `'${categoryMapUrl}'`).replace("'../../../lib/server/catalog-lookup.js'", `'${lookupUrl}'`));
 const profileUrl = url(read('functions/api/auth/profile.js').replace("'../../../lib/server/auth.js'", `'${authUrl}'`).replace("'../../../lib/server/place-auth.js'", `'${userUrl}'`));
 function request(path, data, signed = true, origin = 'https://example.test') {
   return new Request(`https://example.test${path}`, { method: 'PATCH', headers: { origin, 'content-type': 'application/json', ...(signed ? { cookie: `place_session=${'a'.repeat(64)}` } : {}) }, body: JSON.stringify(data) });
@@ -24,6 +26,15 @@ test('privacy changes require same-origin authentication and are scoped to the s
   const update = calls.find(c => c.sql.startsWith('UPDATE place_records'));
   assert.match(update.sql, /WHERE user_id = \? AND place_id = \?/);
   assert.deepEqual(update.args, [1, 'owner', '12345']);
+});
+test('catalog lookup verifies source identity, region and coordinates', async () => {
+  const { lookupPlace } = await import(lookupUrl);
+  const item = { bizesId:'MA123', bizesNm:'카페', ctprvnNm:'충청남도', signguNm:'천안시서북구', lon:'127.1', lat:'36.8', indsLclsNm:'음식', indsSclsNm:'커피' };
+  const fetcher = async () => ({ ok:true, json:async () => ({ header:{ resultCode:'00', stdrYm:'202609' }, body:{ items:[item] } }) });
+  assert.equal((await lookupPlace('key','biz:MA123','충청남도','천안시',fetcher)).category, 'cafe');
+  await assert.rejects(() => lookupPlace('key','biz:MA123','서울특별시','강남구',fetcher));
+  await assert.rejects(() => lookupPlace('key','biz:DIFFERENT','충청남도','천안시',fetcher));
+  await assert.rejects(() => lookupPlace('', 'biz:MA123','충청남도','천안시',fetcher));
 });
 test('profile rejects invalid avatar and password confirmation before modifying data', async () => {
   const { onRequestPatch } = await import(profileUrl); const calls = [];
