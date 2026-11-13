@@ -119,7 +119,7 @@
     gradient.id = 'selected-gradient';
     gradient.setAttribute('x1', '0'); gradient.setAttribute('y1', '0');
     gradient.setAttribute('x2', '0.8'); gradient.setAttribute('y2', '1');
-    [['0%', '#629575'], ['100%', '#3e7252']].forEach(([offset, color]) => {
+    [['0%', '#b9d1d7'], ['100%', '#9ebbc7']].forEach(([offset, color]) => {
       const stop = document.createElementNS(NS, 'stop');
       stop.setAttribute('offset', offset); stop.setAttribute('stop-color', color); gradient.append(stop);
     });

@@ -18,6 +18,8 @@ test('map detail styling follows the homepage palette without removing map contr
   }
   for (const expected of ['id="zoom-in"', 'id="zoom-out"', 'id="zoom-reset"', 'id="region-map"']) assert.ok(html.includes(expected), `missing existing map control: ${expected}`);
   const app = readFileSync(resolve(__dirname, '../public/assets/js/app.js'), 'utf8');
+  assert.match(app, /\['0%', '#b9d1d7'\]/);
+  assert.match(app, /\['100%', '#9ebbc7'\]/);
   assert.match(app, /svg\.addEventListener\('wheel'/);
   assert.match(app, /svg\.addEventListener\('pointerdown'/);
   assert.match(app, /event\.target\.closest\('\.place-marker-hit'\)/);
