@@ -52,3 +52,28 @@ test('a delayed personal records response is ignored after logout', async () => 
   assert.equal(get('mypage-place-list').children.length,0);
   assert.equal(get('mypage-places-status').textContent,'');
 });
+
+test('an expired session clears personal content and prompts login', async () => {
+  class Element {
+    constructor() { this.value = ''; this.hidden = false; this.textContent = ''; this.children = []; this.dataset = {}; this.handlers = {}; }
+    addEventListener(name, fn) { this.handlers[name] = fn; }
+    querySelectorAll() { return []; }
+    replaceChildren(...children) { this.children = children; }
+    setAttribute() {}
+    reset() {}
+    removeAttribute() {}
+    click() { this.clicked = true; }
+  }
+  const nodes = new Map(), handlers = {}, get = id => { if (!nodes.has(id)) nodes.set(id,new Element()); return nodes.get(id); };
+  const tab = new Element(); tab.dataset.tab = 'places';
+  get('mypage-dialog').querySelectorAll = selector => selector === '[data-tab]' ? [tab] : [];
+  const document = {body:{classList:{contains:()=>true}},getElementById:get,addEventListener:(name,fn)=>{handlers[name]=fn;}};
+  const window = {placeCurrentUser:{id:'owner'}};
+  window.placeShowUser = user => { window.placeCurrentUser = user; handlers['place-auth-change']({detail:{signedIn:!!user,user}}); };
+  const fetch = async () => ({ok:false,status:401,json:async()=>({error:'로그인이 필요합니다.'})});
+  vm.runInNewContext(readFileSync(resolve(__dirname,'../public/assets/js/mypage.js'),'utf8'),{document,window,fetch});
+  tab.handlers.click(); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(window.placeCurrentUser,null);
+  assert.equal(get('profile-page').hidden,true);
+  assert.equal(get('auth-open').clicked,true);
+});

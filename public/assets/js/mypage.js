@@ -6,7 +6,9 @@
   let avatar = null, records = [], category = 'all', authEpoch = 0, loadGeneration = 0;
   const drafts = new Map();
   async function api(url, options) {
+    const epoch = authEpoch;
     const response = await fetch(url, options); const data = await response.json();
+    if (response.status === 401 && epoch === authEpoch && window.placeCurrentUser) { window.placeShowUser(null); $('auth-open')?.click(); }
     if (!response.ok) throw new Error(data.error || '요청을 처리하지 못했습니다.'); return data;
   }
   const patch = body => api('/api/auth/profile', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });

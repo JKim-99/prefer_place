@@ -59,6 +59,7 @@
     svg.append(group);
   }
   async function api(url, options) {
+    const requestUser = window.placeCurrentUser;
     const response = await fetch(url, options); let data;
     try { data = await response.json(); } catch {
       if (response.redirected || response.headers.get('content-type')?.includes('text/html')) {
@@ -66,6 +67,7 @@
       }
       throw new Error('서버 응답을 확인할 수 없습니다.');
     }
+    if (response.status === 401 && requestUser && requestUser === window.placeCurrentUser) window.placeShowUser(null);
     if (!response.ok) throw new Error(data.error || '요청을 처리하지 못했습니다.'); return data;
   }
   function renderRecords() {
