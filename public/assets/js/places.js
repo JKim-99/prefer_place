@@ -93,7 +93,7 @@
     } catch (error) { if (version !== generation) return; records = []; $('saved-places').replaceChildren(); status.textContent = error.message; }
     renderMarkers();
   }
-  document.addEventListener('place-auth-change', event => { if (!event.detail.signedIn) live = []; if (region) loadRecords(); });
+  document.addEventListener('place-auth-change', event => { if (!event.detail.signedIn) { live = []; records = []; $('saved-places').replaceChildren(); renderMarkers(); } if (region) loadRecords(); });
   document.addEventListener('place-region-change', event => { region = event.detail; live = []; records = []; loadRecords(); });
   document.addEventListener('place-records-change', () => { if (region) loadRecords(); });
   legend.addEventListener('change', () => { renderMarkers(); renderRecords(); });

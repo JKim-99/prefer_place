@@ -69,4 +69,7 @@ test('adding a search result gives the marker a stable bounded hit target', asyn
   savedRow.children[1].click(); assert.equal(get('saved-places').children.length, 1, 'cancelled deletion preserves the record');
   selected = ['restaurant']; legend.dispatch('change');
   assert.equal(get('saved-places').children.length, 0, 'list follows the category filter');
+  for (const fn of listeners['place-auth-change']) fn({detail:{signedIn:false}});
+  assert.equal(get('saved-places').children.length, 0, 'logout immediately removes private places');
+  assert.equal(get('place-detail').hidden, true, 'logout hides previously open place detail');
 });

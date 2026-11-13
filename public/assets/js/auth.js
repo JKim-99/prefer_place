@@ -50,7 +50,7 @@
     finally { submit.disabled = false; }
   });
   $('auth-logout')?.addEventListener('click', async () => {
-    try { const response = await fetch('/api/auth/me', { method: 'DELETE' }); if (!response.ok) throw new Error(); showUser(null); }
+    try { const response = await fetch('/api/auth/me', { method: 'DELETE' }); if (!response.ok) throw new Error(); showUser(null); if (document.body.classList.contains('mypage-route') && dialog && !dialog.open) { setMode(false); dialog.showModal(); } }
     catch { alert('로그아웃을 처리하지 못했습니다. 다시 시도해 주세요.'); }
   });
   fetch('/api/auth/me').then(response => response.ok ? response.json() : null).then(data => {

@@ -26,7 +26,18 @@
   $('mypage-close')?.addEventListener('click', () => dialog.close());
   dialog?.querySelectorAll('[data-tab]').forEach(button => button.addEventListener('click', () => selectTab(button.dataset.tab)));
   document.addEventListener('place-auth-change', event => {
-    if (!event.detail.signedIn) { drafts.clear(); records = []; }
+    if (!event.detail.signedIn) {
+      drafts.clear(); records = []; avatar = null;
+      if (profilePage) {
+        profilePage.hidden = true;
+        $('mypage-place-list').replaceChildren();
+        $('profile-form').reset(); $('password-form').reset();
+        $('place-record-search').value = ''; $('place-visit-filter').value = 'all'; category = 'all';
+        dialog.querySelectorAll('[data-category]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.category === 'all')));
+        $('profile-status').textContent = ''; $('password-status').textContent = ''; $('mypage-places-status').textContent = '';
+        showAvatar();
+      }
+    }
     if (!event.detail.signedIn && dialog?.open) dialog.close();
     if (profilePage && event.detail.signedIn) { profilePage.hidden = false; fillProfile(event.detail.user); selectTab('profile'); }
   });
