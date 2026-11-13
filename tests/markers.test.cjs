@@ -25,7 +25,8 @@ test('adding a search result gives the marker a stable bounded hit target', asyn
   const get = id => { if (!ids.has(id)) ids.set(id, new Element()); return ids.get(id); };
   const svg = get('region-map'); svg.viewBox = { baseVal: { width: 1, height: 1 } };
   svg.querySelector = selector => selector === '#place-markers' ? svg.children.find(child => child.id === 'place-markers') : null;
-  const legend = new Element(); legend.querySelectorAll = () => ['restaurant','cafe','stay','shopping','beauty','medical','culture','education','other'].map(value => ({ value }));
+  let selected = ['restaurant','cafe','stay','shopping','beauty','medical','culture','education','other'];
+  const legend = new Element(); legend.querySelectorAll = () => selected.map(value => ({ value }));
   const view = new Element(); view.dataset.view = 'mine';
   const listeners = {};
   const document = {
@@ -39,7 +40,7 @@ test('adding a search result gives the marker a stable bounded hit target', asyn
   };
   const place = { id: 'biz:MA123', name: '테스트 카페', x: '127', y: '37.5', category: 'cafe', address: '주소' };
   const fetch = async url => ({ ok: true, headers: { get: () => 'application/json' }, json: async () => url.startsWith('/api/places/search') ? { places: [place] } : url.startsWith('/api/places/records?') ? { records: [{ place_id: 'biz:MA123', name: '테스트 카페', longitude: 127, latitude: 37.5, category: 'cafe', alias: '' }] } : { ok: true } });
-  const context = { document, window: { placeCurrentUser: { id: 'u' } }, fetch, URLSearchParams, AbortController, setTimeout, clearTimeout, console };
+  const context = { document, window: { placeCurrentUser: { id: 'u' }, confirm: () => false }, fetch, URLSearchParams, AbortController, setTimeout, clearTimeout, console };
   vm.runInNewContext(readFileSync(resolve(__dirname, '../public/assets/js/places.js'), 'utf8'), context);
   const shapes = [{ geometry: { type: 'Polygon', coordinates: [[[126,37],[128,37],[128,38],[126,38],[126,37]]] } }];
   for (const fn of listeners['place-region-change']) fn({ detail: { sido: '서울', district: '강남', shapes } });
@@ -62,4 +63,10 @@ test('adding a search result gives the marker a stable bounded hit target', asyn
   hit.dispatch('pointerleave', { relatedTarget: icon });
   assert.equal(hit.contains(icon), true);
   assert.equal(marker.attrs.transform, undefined); assert.equal(position.attrs['pointer-events'], undefined);
+  const savedRow = get('saved-places').children[0];
+  assert.equal(savedRow.children[0].tag, 'button');
+  savedRow.children[0].click(); assert.equal(get('place-detail').hidden, false);
+  savedRow.children[1].click(); assert.equal(get('saved-places').children.length, 1, 'cancelled deletion preserves the record');
+  selected = ['restaurant']; legend.dispatch('change');
+  assert.equal(get('saved-places').children.length, 0, 'list follows the category filter');
 });

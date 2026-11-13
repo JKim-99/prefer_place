@@ -68,14 +68,18 @@
   function renderRecords() {
     const list = $('saved-places'); list.replaceChildren();
     if (!records.length) { status.textContent = mode === 'popular' ? '공개 기록이 3명 이상인 장소가 아직 없어요.' : mode === 'anonymous' ? '이 지역에 공개된 장소가 아직 없어요.' : '이 지역에 저장한 장소가 없어요.'; return; }
-    const namedRecords = records.filter(record => record.name || (record.alias && record.alias.trim()) || /^\d+$/.test(record.place_id));
-    status.textContent = mode === 'popular' ? '공개 저장 사용자 수 기준입니다.' : '';
+    const allowed = selectedCategories();
+    const namedRecords = records.filter(record => allowed.has(category(record.category)) && (record.name || (record.alias && record.alias.trim()) || /^\d+$/.test(record.place_id)));
+    status.textContent = !namedRecords.length ? '선택한 장소 종류에 해당하는 기록이 없어요.' : mode === 'popular' ? '공개 저장 사용자 수 기준입니다.' : `${namedRecords.length}개의 장소`;
     namedRecords.forEach(record => {
-      const li = document.createElement('li'), link = document.createElement('a');
-      if (/^\d+$/.test(record.place_id)) { link.href = `https://place.map.kakao.com/${record.place_id}`; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = record.alias || '기존 카카오 장소 보기'; } else { link.textContent = record.alias || record.name; } li.append(link);
+      const li = document.createElement('li'), isLegacy = /^\d+$/.test(record.place_id), link = document.createElement(isLegacy ? 'a' : 'button');
+      if (isLegacy) { link.href = `https://place.map.kakao.com/${record.place_id}`; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = record.alias || '기존 카카오 장소 보기'; }
+      else { link.type = 'button'; link.className = 'saved-place-name'; link.textContent = record.alias || record.name; link.addEventListener('click', () => { const place = live.find(item => item.id === record.place_id); if (place) { showDetail(place); detail.focus(); } }); }
+      li.append(link);
       if (mode === 'mine') {
         const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = '삭제';
-        remove.addEventListener('click', async () => { try { await api(`/api/places/records?id=${encodeURIComponent(record.place_id)}`, { method: 'DELETE' }); live = live.filter(p => p.id !== record.place_id); renderMarkers(); await loadRecords(); } catch (error) { status.textContent = error.message; } }); li.append(remove);
+        remove.setAttribute('aria-label', `${record.alias || record.name || '장소'} 삭제`);
+        remove.addEventListener('click', async () => { if (!window.confirm('이 장소를 삭제할까요? 저장한 메모와 방문 상태도 함께 삭제됩니다.')) return; remove.disabled = true; try { await api(`/api/places/records?id=${encodeURIComponent(record.place_id)}`, { method: 'DELETE' }); live = live.filter(p => p.id !== record.place_id); renderMarkers(); await loadRecords(); } catch (error) { status.textContent = error.message; remove.disabled = false; } }); li.append(remove);
       }
       list.append(li);
     });
@@ -92,7 +96,7 @@
   document.addEventListener('place-auth-change', event => { if (!event.detail.signedIn) live = []; if (region) loadRecords(); });
   document.addEventListener('place-region-change', event => { region = event.detail; live = []; records = []; loadRecords(); });
   document.addEventListener('place-records-change', () => { if (region) loadRecords(); });
-  legend.addEventListener('change', renderMarkers);
+  legend.addEventListener('change', () => { renderMarkers(); renderRecords(); });
   document.querySelectorAll('.place-view').forEach(button => button.addEventListener('click', () => {
     mode = button.dataset.view;
     document.querySelectorAll('.place-view').forEach(item => { const active = item === button; item.classList.toggle('is-active', active); item.setAttribute('aria-pressed', String(active)); });
