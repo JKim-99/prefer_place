@@ -11,9 +11,22 @@ export async function onRequestGet({ request, env }) {
   if (mode === 'mypage' || mode === 'mine') {
     const user = await currentUser(request, env.DB); if (!user) return json({ error: '로그인이 필요합니다.' }, 401);
     if (mode === 'mine' && (!sido || !district || sido.length > 40 || district.length > 40)) return json({ error: '지역을 확인해 주세요.' }, 400);
-    const statement = mode === 'mypage' ? env.DB.prepare(`SELECT ${columns}, r.note, r.visit_status, r.tags, r.visit_date ${join} WHERE r.user_id = ? ORDER BY r.created_at DESC, r.place_id ASC`).bind(user.id) : env.DB.prepare(`SELECT ${columns}, r.note, r.visit_status, r.tags, r.visit_date ${join} WHERE r.user_id = ? AND r.region_sido = ? AND r.region_district = ? ORDER BY r.created_at DESC, r.place_id ASC LIMIT 101`).bind(user.id, sido, district);
+    const privateColumns = `${columns}, r.note, r.visit_status, r.tags, r.visit_date, r.created_at AS saved_at`;
+    const cursor = mode === 'mine' ? url.searchParams.get('cursor') || '' : '';
+    const cursorMatch = cursor.match(/^(\d{1,12}):((?:\d{1,30}|biz:[A-Za-z0-9]{1,40}))$/);
+    if (cursor && !cursorMatch) return json({ error: '목록 위치를 확인해 주세요.' }, 400);
+    let statement;
+    if (mode === 'mypage') statement = env.DB.prepare(`SELECT ${privateColumns} ${join} WHERE r.user_id = ? ORDER BY r.created_at DESC, r.place_id ASC`).bind(user.id);
+    else {
+      const whereCursor = cursorMatch ? ' AND (r.created_at < ? OR (r.created_at = ? AND r.place_id > ?))' : '';
+      const bindings = [user.id, sido, district];
+      if (cursorMatch) bindings.push(Number(cursorMatch[1]), Number(cursorMatch[1]), cursorMatch[2]);
+      statement = env.DB.prepare(`SELECT ${privateColumns} ${join} WHERE r.user_id = ? AND r.region_sido = ? AND r.region_district = ?${whereCursor} ORDER BY r.created_at DESC, r.place_id ASC LIMIT 101`).bind(...bindings);
+    }
     const rows = (await statement.all()).results;
-    return json({ records: (mode === 'mine' ? rows.slice(0, 100) : rows).map(withPrivateData), hasMore: mode === 'mine' && rows.length > 100 });
+    const hasMore = mode === 'mine' && rows.length > 100, page = mode === 'mine' ? rows.slice(0, 100) : rows;
+    const last = page[page.length - 1];
+    return json({ records: page.map(withPrivateData), hasMore, nextCursor: hasMore ? `${last.saved_at}:${last.place_id}` : null });
   }
   if (!sido || !district || sido.length > 40 || district.length > 40) return json({ error: '지역을 확인해 주세요.' }, 400);
   if (mode === 'popular') {

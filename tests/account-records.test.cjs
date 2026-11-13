@@ -88,14 +88,20 @@ test('personal notes and visit state are validated and scoped to the owner', asy
   const publicQuery = calls.at(-1).sql;
   assert.doesNotMatch(publicQuery, /r\.note|r\.visit_status|r\.visit_date|r\.tags/);
 });
-test('map queries disclose a 100-record limit while mypage returns all records', async () => {
+test('personal map uses a scoped stable cursor while public maps disclose their limit', async () => {
   const { onRequestGet } = await import(recordsUrl);
-  const rows = Array.from({length:101}, (_,i) => ({place_id:`biz:${i}`,name:`장소 ${i}`,category:'other',tags:'[]'}));
-  const db = { prepare() { return { bind() { return { first:async()=>({id:'owner'}),all:async()=>({results:rows}) }; } }; } };
+  const rows = Array.from({length:101}, (_,i) => ({place_id:`biz:${i}`,name:`장소 ${i}`,category:'other',tags:'[]',saved_at:1000}));
+  const calls = [];
+  const db = { prepare(sql) { return { bind(...args) { calls.push({sql,args}); return { first:async()=>({id:'owner'}),all:async()=>({results:args.length === 6 ? rows.slice(100) : rows}) }; } }; } };
   const base = 'https://example.test/api/places/records';
   const headers = {cookie:`place_session=${'a'.repeat(64)}`};
   const mine = await (await onRequestGet({request:new Request(`${base}?mode=mine&sido=A&district=B`,{headers}),env:{DB:db}})).json();
-  assert.equal(mine.records.length,100); assert.equal(mine.hasMore,true);
+  assert.equal(mine.records.length,100); assert.equal(mine.hasMore,true); assert.equal(mine.nextCursor,'1000:biz:99');
+  const next = await (await onRequestGet({request:new Request(`${base}?mode=mine&sido=A&district=B&cursor=${encodeURIComponent(mine.nextCursor)}`,{headers}),env:{DB:db}})).json();
+  assert.equal(next.records.length,1); assert.equal(next.hasMore,false); assert.equal(next.nextCursor,null);
+  const cursorQuery = calls.find(call => call.sql.includes('r.created_at < ?'));
+  assert.match(cursorQuery.sql,/WHERE r\.user_id = \?/); assert.deepEqual(cursorQuery.args,['owner','A','B',1000,1000,'biz:99']);
+  assert.equal((await onRequestGet({request:new Request(`${base}?mode=mine&sido=A&district=B&cursor=bad`,{headers}),env:{DB:db}})).status,400);
   const publicMap = await (await onRequestGet({request:new Request(`${base}?mode=popular&sido=A&district=B`),env:{DB:db}})).json();
   assert.equal(publicMap.records.length,100); assert.equal(publicMap.hasMore,true);
   const mypage = await (await onRequestGet({request:new Request(`${base}?mode=mypage`,{headers}),env:{DB:db}})).json();
