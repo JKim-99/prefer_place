@@ -1,4 +1,5 @@
 import regions from './regions.json';
+import { categorizePlace } from '../lib/place-categories.js';
 
 const API = 'https://apis.data.go.kr/B553077/api/open/sdsc2/storeListInDong';
 const PAGE_SIZE = 1000;
@@ -13,10 +14,11 @@ export function normalizeItem(item, group, version, token, baseVersion) {
   if (!/^[A-Za-z0-9]{1,40}$/.test(identifier) || sido !== group.sido || district !== group.district) throw new Error('공공데이터의 장소 또는 지역 정보가 유효하지 않습니다.');
   // Missing coordinates must not block an entire region or erase an existing record.
   if (!name || !Number.isFinite(longitude) || longitude < 124 || longitude > 132 || !Number.isFinite(latitude) || latitude < 33 || latitude > 39) return null;
-  const detail = String(item.indsSclsNm || '').trim(), middle = String(item.indsMclsNm || '').trim();
-  const major = String(item.indsLclsNm || '').trim(), standard = String(item.ksicNm || '');
-  const category = /카페|커피/.test(detail) || standard.includes('커피') ? 'cafe' : major === '숙박' || middle.includes('숙박') ? 'stay' : major === '음식' ? 'restaurant' : 'other';
-  return [`biz:${identifier}`, name, String(item.rdnmAdr || item.lnoAdr || '').trim(), category, detail, sido, district, longitude, latitude, baseVersion, version, token];
+  const detail = String(item.indsSclsNm || '').trim();
+  const middle = String(item.indsMclsNm || '').trim();
+  const major = String(item.indsLclsNm || '').trim();
+  const category = categorizePlace({ major, middle, detail, standard: item.ksicNm || '' });
+  return [`biz:${identifier}`, name, String(item.rdnmAdr || item.lnoAdr || '').trim(), category, detail, major, middle, sido, district, longitude, latitude, baseVersion, version, token];
 }
 
 async function getPage(apiKey, code, page, fetcher) {
@@ -36,8 +38,8 @@ async function getPage(apiKey, code, page, fetcher) {
 }
 
 function insertBatch(db, rows) {
-  const values = rows.map(() => '(?,?,?,?,?,?,?,?,?,?,?,?,1)').join(',');
-  return db.prepare(`INSERT INTO public_places (id,name,address,category,category_name,region_sido,region_district,longitude,latitude,data_version,source_version,last_sync_token,is_active) VALUES ${values} ON CONFLICT(id) DO UPDATE SET name=excluded.name,address=excluded.address,category=excluded.category,category_name=excluded.category_name,region_sido=excluded.region_sido,region_district=excluded.region_district,longitude=excluded.longitude,latitude=excluded.latitude,data_version=excluded.data_version,source_version=excluded.source_version,last_sync_token=excluded.last_sync_token,is_active=1`).bind(...rows.flat());
+  const values = rows.map(() => '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,2)').join(',');
+  return db.prepare(`INSERT INTO public_places (id,name,address,category,category_name,category_major,category_middle,region_sido,region_district,longitude,latitude,data_version,source_version,last_sync_token,is_active,category_version) VALUES ${values} ON CONFLICT(id) DO UPDATE SET name=excluded.name,address=excluded.address,category=excluded.category,category_name=excluded.category_name,category_major=excluded.category_major,category_middle=excluded.category_middle,region_sido=excluded.region_sido,region_district=excluded.region_district,longitude=excluded.longitude,latitude=excluded.latitude,data_version=excluded.data_version,source_version=excluded.source_version,last_sync_token=excluded.last_sync_token,is_active=1,category_version=2`).bind(...rows.flat());
 }
 
 export async function syncOnce(env, options = {}) {

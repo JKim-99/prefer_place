@@ -4,8 +4,8 @@
   const dialog = $('place-dialog'), searchStatus = $('place-search-status'), results = $('place-search-results');
   const legend = document.querySelector('.place-legend');
   let region = null, mode = 'mine', live = [], records = [], generation = 0;
-  const icons = { restaurant: '🍴', cafe: '☕', stay: '🛏', other: '📍' };
-  const category = code => ({ FD6: 'restaurant', CE7: 'cafe', AD5: 'stay', restaurant: 'restaurant', cafe: 'cafe', stay: 'stay', other: 'other' }[code] || 'other');
+  const icons = { restaurant: '🍴', cafe: '☕', stay: '🛏', shopping: '🛍', beauty: '💇', medical: '⚕️', culture: '🎭', education: '📚', other: '📍' };
+  const category = code => ({ FD6: 'restaurant', CE7: 'cafe', AD5: 'stay', restaurant: 'restaurant', cafe: 'cafe', stay: 'stay', shopping: 'shopping', beauty: 'beauty', medical: 'medical', culture: 'culture', education: 'education', other: 'other' }[code] || 'other');
   const selectedCategories = () => new Set([...legend.querySelectorAll('input:checked')].map(i => i.value));
   const tooltip = $('marker-tooltip'), detail = $('place-detail'), stage = $('map-stage');
   function hideInfo() { tooltip.hidden = true; detail.hidden = true; }
@@ -85,7 +85,7 @@
     try {
       const params = new URLSearchParams({ sido: region.sido, district: region.district, mode });
       const data = await api(`/api/places/records?${params}`); if (version !== generation) return;
-      records = data.records || []; live = records.filter(r => r.name && Number.isFinite(Number(r.longitude)) && Number.isFinite(Number(r.latitude))).map(r => ({ id: r.place_id, name: r.alias || r.name, address: r.address, category: r.category, categoryName: r.category_name, x: r.longitude, y: r.latitude, dataVersion: r.data_version })); renderRecords();
+      records = data.records || []; live = records.filter(r => r.name && Number.isFinite(Number(r.longitude)) && Number.isFinite(Number(r.latitude))).map(r => ({ id: r.place_id, name: r.alias || r.name, address: r.address, category: r.category, categoryName: r.category_name, categoryMajor: r.category_major, categoryMiddle: r.category_middle, x: r.longitude, y: r.latitude, dataVersion: r.data_version })); renderRecords();
     } catch (error) { if (version !== generation) return; records = []; $('saved-places').replaceChildren(); status.textContent = error.message; }
     renderMarkers();
   }

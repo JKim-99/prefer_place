@@ -1,7 +1,8 @@
 import { json, readBody, sameOrigin } from '../../../lib/server/auth.js';
 import { currentUser } from '../../../lib/server/place-auth.js';
+import { categoryFromFields } from '../../../lib/place-category-map.js';
 const validId = id => /^(?:\d{1,30}|biz:[A-Za-z0-9]{1,40})$/.test(id || '');
-const columns = `r.place_id, r.alias, r.is_public, r.region_sido, r.region_district, CASE WHEN p.id IS NULL THEN 'other' ELSE p.category END AS category, p.name, p.address, p.category_name, p.longitude, p.latitude, COALESCE(p.source_version, p.data_version) AS data_version`;
+const columns = `r.place_id, r.alias, r.is_public, r.region_sido, r.region_district, CASE WHEN p.id IS NULL THEN 'other' ELSE p.category END AS category, p.name, p.address, p.category_name, p.category_major, p.category_middle, p.category_version, p.longitude, p.latitude, COALESCE(p.source_version, p.data_version) AS data_version`;
 const join = ' FROM place_records r LEFT JOIN public_places p ON p.id = r.place_id ';
 export async function onRequestGet({ request, env }) {
   if (!env.DB) return json({ error: '데이터베이스가 설정되지 않았습니다.' }, 503);
@@ -9,19 +10,22 @@ export async function onRequestGet({ request, env }) {
   if (mode === 'mypage' || mode === 'mine') {
     const user = await currentUser(request, env.DB); if (!user) return json({ error: '로그인이 필요합니다.' }, 401);
     if (mode === 'mine' && (!sido || !district || sido.length > 40 || district.length > 40)) return json({ error: '지역을 확인해 주세요.' }, 400);
-    const statement = mode === 'mypage' ? env.DB.prepare(`SELECT ${columns} ${join} WHERE r.user_id = ? ORDER BY r.created_at DESC`).bind(user.id) : env.DB.prepare(`SELECT ${columns} ${join} WHERE r.user_id = ? AND r.region_sido = ? AND r.region_district = ? ORDER BY r.created_at DESC LIMIT 100`).bind(user.id, sido, district);
-    return json({ records: (await statement.all()).results });
+    const statement = mode === 'mypage' ? env.DB.prepare(`SELECT ${columns}, r.note, r.visit_status ${join} WHERE r.user_id = ? ORDER BY r.created_at DESC`).bind(user.id) : env.DB.prepare(`SELECT ${columns}, r.note, r.visit_status ${join} WHERE r.user_id = ? AND r.region_sido = ? AND r.region_district = ? ORDER BY r.created_at DESC LIMIT 100`).bind(user.id, sido, district);
+    return json({ records: (await statement.all()).results.map(withCategory) });
   }
   if (!sido || !district || sido.length > 40 || district.length > 40) return json({ error: '지역을 확인해 주세요.' }, 400);
   if (mode === 'popular') {
-    const result = await env.DB.prepare(`SELECT p.id AS place_id, p.name, p.address, p.category, p.category_name, p.longitude, p.latitude, COALESCE(p.source_version, p.data_version) AS data_version, COUNT(DISTINCT r.user_id) AS count FROM place_records r JOIN public_places p ON p.id = r.place_id WHERE r.region_sido = ? AND r.region_district = ? AND r.is_public = 1 GROUP BY r.place_id HAVING COUNT(DISTINCT r.user_id) >= 3 ORDER BY count DESC LIMIT 100`).bind(sido, district).all();
-    return json({ records: result.results });
+    const result = await env.DB.prepare(`SELECT p.id AS place_id, p.name, p.address, p.category, p.category_name, p.category_major, p.category_middle, p.category_version, p.longitude, p.latitude, COALESCE(p.source_version, p.data_version) AS data_version, COUNT(DISTINCT r.user_id) AS count FROM place_records r JOIN public_places p ON p.id = r.place_id WHERE r.region_sido = ? AND r.region_district = ? AND r.is_public = 1 GROUP BY r.place_id HAVING COUNT(DISTINCT r.user_id) >= 3 ORDER BY count DESC LIMIT 100`).bind(sido, district).all();
+    return json({ records: result.results.map(withCategory) });
   }
   if (mode === 'anonymous') {
     const result = await env.DB.prepare(`SELECT ${columns} ${join} WHERE r.is_public = 1 AND r.region_sido = ? AND r.region_district = ? AND r.user_id = (SELECT user_id FROM place_records WHERE is_public = 1 AND region_sido = ? AND region_district = ? AND place_id LIKE 'biz:%' GROUP BY user_id ORDER BY RANDOM() LIMIT 1) AND p.id IS NOT NULL LIMIT 100`).bind(sido, district, sido, district).all();
-    return json({ records: result.results });
+    return json({ records: result.results.map(withCategory) });
   }
   return json({ error: '조회 방식을 확인해 주세요.' }, 400);
+}
+function withCategory(record) {
+  return { ...record, category: categoryFromFields(record) };
 }
 export async function onRequestPost({ request, env }) {
   if (!env.DB) return json({ error: '데이터베이스가 설정되지 않았습니다.' }, 503);
@@ -45,7 +49,15 @@ export async function onRequestPatch({ request, env }) {
   if (!env.DB) return json({ error: '데이터베이스가 설정되지 않았습니다.' }, 503);
   const body = await readBody(request); if (!body) return json({ error: '올바른 요청이 아닙니다.' }, 400);
   const user = await currentUser(request, env.DB); if (!user) return json({ error: '로그인이 필요합니다.' }, 401);
-  if (!validId(body.placeId) || typeof body.isPublic !== 'boolean') return json({ error: '공개 설정을 확인해 주세요.' }, 400);
-  const result = await env.DB.prepare('UPDATE place_records SET is_public = ? WHERE user_id = ? AND place_id = ?').bind(body.isPublic ? 1 : 0, user.id, body.placeId).run();
+  if (!validId(body.placeId)) return json({ error: '장소를 확인해 주세요.' }, 400);
+  let statement;
+  if (body.action === 'details') {
+    if (typeof body.note !== 'string' || body.note.length > 1000 || !['', 'want', 'visited', 'again'].includes(body.visitStatus)) return json({ error: '메모 또는 방문 상태를 확인해 주세요.' }, 400);
+    statement = env.DB.prepare('UPDATE place_records SET note = ?, visit_status = ? WHERE user_id = ? AND place_id = ?').bind(body.note, body.visitStatus, user.id, body.placeId);
+  } else {
+    if (body.action !== undefined || typeof body.isPublic !== 'boolean') return json({ error: '공개 설정을 확인해 주세요.' }, 400);
+    statement = env.DB.prepare('UPDATE place_records SET is_public = ? WHERE user_id = ? AND place_id = ?').bind(body.isPublic ? 1 : 0, user.id, body.placeId);
+  }
+  const result = await statement.run();
   if (!result.meta.changes) return json({ error: '장소를 찾을 수 없습니다.' }, 404); return json({ ok: true });
 }

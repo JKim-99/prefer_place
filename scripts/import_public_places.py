@@ -12,6 +12,11 @@ import sqlite3
 import sys
 import time
 import zipfile
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'lib'))
+sys.dont_write_bytecode = True
+from place_categories import categorize_place as _categorize_place
 
 
 def normalized_region(name):
@@ -21,16 +26,12 @@ def normalized_region(name):
 
 
 def category(row):
-    major = row['상권업종대분류명'].strip()
-    middle = row['상권업종중분류명'].strip()
-    detail = row['상권업종소분류명'].strip()
-    if '카페' in detail or '커피' in detail or '커피' in row.get('표준산업분류명', ''):
-        return 'cafe'
-    if major == '숙박' or '숙박' in middle:
-        return 'stay'
-    if major == '음식':
-        return 'restaurant'
-    return 'other'
+    return _categorize_place(
+        row.get('상권업종대분류명', ''),
+        row.get('상권업종중분류명', ''),
+        row.get('상권업종소분류명', ''),
+        row.get('표준산업분류명', ''),
+    )
 
 
 def rows(path, version):
@@ -55,7 +56,13 @@ def rows(path, version):
                         continue
                     if not re.fullmatch(r'[A-Za-z0-9]{1,40}', identifier) or not name or not province or not district or not (124 <= lon <= 132 and 33 <= lat <= 39):
                         continue
-                    yield ('biz:' + identifier, name, (row.get('도로명주소') or row.get('지번주소') or '').strip(), category(row), row['상권업종소분류명'].strip(), province, district, lon, lat, version)
+                    yield (
+                        'biz:' + identifier, name,
+                        (row.get('도로명주소') or row.get('지번주소') or '').strip(),
+                        category(row), row['상권업종소분류명'].strip(),
+                        row['상권업종대분류명'].strip(), row['상권업종중분류명'].strip(),
+                        province, district, lon, lat, version,
+                    )
 
 
 def main():
@@ -66,7 +73,7 @@ def main():
     args = parser.parse_args()
     db = sqlite3.connect(args.db, timeout=60)
     # Upsert; do not remove records from older releases: users' saved places keep working.
-    sql = '''INSERT INTO public_places (id,name,address,category,category_name,region_sido,region_district,longitude,latitude,data_version,source_version,is_active) VALUES (?,?,?,?,?,?,?,?,?,?,?,1) ON CONFLICT(id) DO UPDATE SET name=excluded.name,address=excluded.address,category=excluded.category,category_name=excluded.category_name,region_sido=excluded.region_sido,region_district=excluded.region_district,longitude=excluded.longitude,latitude=excluded.latitude,data_version=excluded.data_version,source_version=excluded.source_version,is_active=1'''
+    sql = '''INSERT INTO public_places (id,name,address,category,category_name,category_major,category_middle,region_sido,region_district,longitude,latitude,data_version,source_version,is_active,category_version) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,1,2) ON CONFLICT(id) DO UPDATE SET name=excluded.name,address=excluded.address,category=excluded.category,category_name=excluded.category_name,category_major=excluded.category_major,category_middle=excluded.category_middle,region_sido=excluded.region_sido,region_district=excluded.region_district,longitude=excluded.longitude,latitude=excluded.latitude,data_version=excluded.data_version,source_version=excluded.source_version,is_active=1,category_version=2'''
     count, batch = 0, []
     for row in rows(args.zip, args.version):
         batch.append((*row, args.version[:6]))

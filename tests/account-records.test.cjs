@@ -8,7 +8,8 @@ const read = p => readFileSync(resolve(__dirname, '..', p), 'utf8');
 const url = code => `data:text/javascript;base64,${Buffer.from(code).toString('base64')}`;
 const authUrl = url(read('lib/server/auth.js'));
 const userUrl = url(read('lib/server/place-auth.js').replace("'./auth.js'", `'${authUrl}'`));
-const recordsUrl = url(read('functions/api/places/records.js').replace("'../../../lib/server/auth.js'", `'${authUrl}'`).replace("'../../../lib/server/place-auth.js'", `'${userUrl}'`));
+const categoryMapUrl = url(read('lib/place-category-map.js'));
+const recordsUrl = url(read('functions/api/places/records.js').replace("'../../../lib/server/auth.js'", `'${authUrl}'`).replace("'../../../lib/server/place-auth.js'", `'${userUrl}'`).replace("'../../../lib/place-category-map.js'", `'${categoryMapUrl}'`));
 const profileUrl = url(read('functions/api/auth/profile.js').replace("'../../../lib/server/auth.js'", `'${authUrl}'`).replace("'../../../lib/server/place-auth.js'", `'${userUrl}'`));
 function request(path, data, signed = true, origin = 'https://example.test') {
   return new Request(`https://example.test${path}`, { method: 'PATCH', headers: { origin, 'content-type': 'application/json', ...(signed ? { cookie: `place_session=${'a'.repeat(64)}` } : {}) }, body: JSON.stringify(data) });
@@ -31,4 +32,20 @@ test('profile rejects invalid avatar and password confirmation before modifying 
   assert.equal((await onRequestPatch({ request: request('/api/auth/profile', profile), env: { DB: db } })).status, 400);
   assert.equal((await onRequestPatch({ request: request('/api/auth/profile', { action: 'password', newPassword: 'long-password', passwordConfirm: 'different' }), env: { DB: db } })).status, 400);
   assert.equal(calls.some(sql => sql.startsWith('UPDATE')), false);
+});
+test('personal notes and visit state are validated and scoped to the owner', async () => {
+  const { onRequestPatch, onRequestGet } = await import(recordsUrl); const calls = [];
+  const db = { prepare(sql) { return { bind(...args) { calls.push({sql, args}); return { first: async () => ({ id: 'owner' }), run: async () => ({ meta: { changes: args.at(-1) === 'biz:missing' ? 0 : 1 } }), all: async () => ({ results: [] }) }; } }; } };
+  const details = { action: 'details', placeId: 'biz:abc', note: '조용한 곳', visitStatus: 'again' };
+  assert.equal((await onRequestPatch({request: request('/api/places/records', details, false), env: {DB: db}})).status, 401);
+  assert.equal((await onRequestPatch({request: request('/api/places/records', {...details, note: 'x'.repeat(1001)}), env: {DB: db}})).status, 400);
+  assert.equal((await onRequestPatch({request: request('/api/places/records', {...details, visitStatus: 'invalid'}), env: {DB: db}})).status, 400);
+  assert.equal((await onRequestPatch({request: request('/api/places/records', {...details, placeId: 'biz:missing'}), env: {DB: db}})).status, 404);
+  assert.equal((await onRequestPatch({request: request('/api/places/records', details), env: {DB: db}})).status, 200);
+  const update = calls.findLast(c => c.sql.startsWith('UPDATE place_records SET note'));
+  assert.match(update.sql, /WHERE user_id = \? AND place_id = \?/);
+  assert.deepEqual(update.args, ['조용한 곳', 'again', 'owner', 'biz:abc']);
+  await onRequestGet({request: new Request('https://example.test/api/places/records?mode=anonymous&sido=A&district=B'), env: {DB: db}});
+  const publicQuery = calls.at(-1).sql;
+  assert.doesNotMatch(publicQuery, /r\.note|r\.visit_status/);
 });

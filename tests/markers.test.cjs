@@ -25,7 +25,7 @@ test('adding a search result gives the marker a stable bounded hit target', asyn
   const get = id => { if (!ids.has(id)) ids.set(id, new Element()); return ids.get(id); };
   const svg = get('region-map'); svg.viewBox = { baseVal: { width: 1, height: 1 } };
   svg.querySelector = selector => selector === '#place-markers' ? svg.children.find(child => child.id === 'place-markers') : null;
-  const legend = new Element(); legend.querySelectorAll = () => ['restaurant','cafe','stay','other'].map(value => ({ value }));
+  const legend = new Element(); legend.querySelectorAll = () => ['restaurant','cafe','stay','shopping','beauty','medical','culture','education','other'].map(value => ({ value }));
   const view = new Element(); view.dataset.view = 'mine';
   const listeners = {};
   const document = {

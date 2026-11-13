@@ -12,7 +12,8 @@
     ['auth-nickname', 'auth-email', 'auth-confirm'].forEach(id => { $(id).required = signup; });
     $('remember-field').hidden = signup;
     $('auth-username').maxLength = signup ? 30 : 254;
-    $('auth-username').pattern = signup ? '[A-Za-z0-9_]{4,30}' : '';
+    if (signup) $('auth-username').pattern = '[A-Za-z0-9_]{4,30}';
+    else $('auth-username').removeAttribute('pattern');
     $('auth-username').title = signup ? '영문, 숫자, 밑줄을 사용해 4~30자로 입력해 주세요.' : '';
     if (!signup) { $('auth-username').value = savedId(); $('remember-id').checked = !!savedId(); }
     $('auth-password').autocomplete = signup ? 'new-password' : 'current-password';
@@ -58,8 +59,7 @@
     const profilePage = $('profile-page');
     if (profilePage && document.body.classList.contains('mypage-route')) {
       profilePage.hidden = !user;
-      if (user) { fillProfile(user); selectTab('profile'); }
-      else if (dialog) { setMode(false); dialog.showModal(); }
+      if (!user && dialog) { setMode(false); dialog.showModal(); }
     }
   }).catch(() => {
     showUser(null);
