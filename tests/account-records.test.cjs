@@ -72,6 +72,7 @@ test('personal notes and visit state are validated and scoped to the owner', asy
   assert.equal((await onRequestPatch({request: request('/api/places/records', {...details, visitStatus: 'invalid'}), env: {DB: db}})).status, 400);
   assert.equal((await onRequestPatch({request: request('/api/places/records', {...details, tags: Array(9).fill('tag')}), env: {DB: db}})).status, 400);
   assert.equal((await onRequestPatch({request: request('/api/places/records', {...details, tags: ['카페','카페']}), env: {DB: db}})).status, 400);
+  for (const visitDate of ['2026-02-29','2026-13-01','1899-12-31',null]) assert.equal((await onRequestPatch({request:request('/api/places/records',{...details,visitDate}),env:{DB:db}})).status,400);
   assert.equal((await onRequestPatch({request: request('/api/places/records', {...details, placeId: 'biz:missing'}), env: {DB: db}})).status, 404);
   assert.equal((await onRequestPatch({request: request('/api/places/records', details), env: {DB: db}})).status, 200);
   const update = calls.findLast(c => c.sql.startsWith('UPDATE place_records SET note'));
@@ -80,7 +81,10 @@ test('personal notes and visit state are validated and scoped to the owner', asy
   assert.equal((await onRequestPatch({request: request('/api/places/records', {...details, tags: [' 조용함 ', '산책']}), env: {DB: db}})).status, 200);
   const tagUpdate = calls.findLast(c => c.sql.includes('visit_status = ?, tags = ?'));
   assert.deepEqual(tagUpdate.args, ['조용한 곳', 'again', '["조용함","산책"]', 'owner', 'biz:abc']);
+  assert.equal((await onRequestPatch({request:request('/api/places/records',{...details,tags:['산책'],visitDate:'2024-02-29'}),env:{DB:db}})).status,200);
+  const dateUpdate = calls.findLast(c => c.sql.includes('visit_date = ?'));
+  assert.deepEqual(dateUpdate.args, ['조용한 곳','again','["산책"]','2024-02-29','owner','biz:abc']);
   await onRequestGet({request: new Request('https://example.test/api/places/records?mode=anonymous&sido=A&district=B'), env: {DB: db}});
   const publicQuery = calls.at(-1).sql;
-  assert.doesNotMatch(publicQuery, /r\.note|r\.visit_status|r\.tags/);
+  assert.doesNotMatch(publicQuery, /r\.note|r\.visit_status|r\.visit_date|r\.tags/);
 });

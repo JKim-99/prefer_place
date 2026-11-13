@@ -84,7 +84,7 @@
       if (mode === 'mine') {
         const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = '삭제';
         remove.setAttribute('aria-label', `${record.alias || record.name || '장소'} 삭제`);
-        remove.addEventListener('click', async () => { if (!window.confirm('이 장소를 삭제할까요? 저장한 메모와 방문 상태도 함께 삭제됩니다.')) return; remove.disabled = true; try { await api(`/api/places/records?id=${encodeURIComponent(record.place_id)}`, { method: 'DELETE' }); live = live.filter(p => p.id !== record.place_id); renderMarkers(); await loadRecords(); } catch (error) { status.textContent = error.message; remove.disabled = false; } }); li.append(remove);
+        remove.addEventListener('click', async () => { if (!window.confirm('이 장소를 삭제할까요? 저장한 메모와 방문 기록, 태그도 함께 삭제됩니다.')) return; remove.disabled = true; try { await api(`/api/places/records?id=${encodeURIComponent(record.place_id)}`, { method: 'DELETE' }); live = live.filter(p => p.id !== record.place_id); renderMarkers(); await loadRecords(); } catch (error) { status.textContent = error.message; remove.disabled = false; } }); li.append(remove);
       }
       list.append(li);
     });
