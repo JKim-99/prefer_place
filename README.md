@@ -4,6 +4,14 @@
 
 운영 검색은 2026-09-30 공공 상가정보의 지역별 공개 스냅샷을 사용합니다. 선택한 새 장소는 공공 API 단건 조회로 확인하고 저장하며, 자료 기준일 이후 개업·폐업·변경은 검색에 즉시 반영되지 않을 수 있습니다. 전국 스냅샷은 `prefer-place-public-catalog` Pages 프로젝트에 배포하며 `scripts/export_catalog_shards.py`로 비공개 로컬 사용자 기록을 제외한 공공 장소만 내보냅니다. 스냅샷 갱신은 아직 자동화되지 않았습니다. 공공 API 키는 Pages secret으로 관리합니다. 아래의 이전 운영 안내는 작성 당시 상황으로, 현재 상태는 `HARNESS.md`를 먼저 확인하세요.
 
+공식 최신 CSV를 격리된 로컬 D1에 적재하고 `public_catalog_meta.data_version`과 원본 기준일이 일치하는지 확인한 뒤, 비어 있는 디렉터리에 지역별 스냅샷을 만들 수 있습니다.
+
+```sh
+python3 scripts/export_catalog_shards.py --db /path/to/catalog.sqlite --output /path/to/empty-output --version YYYYMMDD
+```
+
+생성된 `manifest.json`의 기준일·전체 건수·지역 수와 몇 지역의 검색 및 저장을 검증합니다. 배포는 `prefer-place-public-catalog` 프로젝트에 정적 파일만 올려야 합니다. 프로젝트 루트에서 실행하면 앱의 `functions/`가 함께 배포될 수 있으므로, 임시 디렉터리에서 저장소의 Wrangler 실행 파일을 절대 경로로 지정해 `pages deploy /path/to/empty-output --project-name prefer-place-public-catalog --branch main`을 실행합니다. 원본 ZIP·DB·사용자 기록·API 키는 Git이나 공개 스냅샷에 포함하지 않습니다. 새 스냅샷은 CDN 캐시 때문에 반영까지 최대 1시간이 걸릴 수 있습니다.
+
 대한민국 지역을 탐색하고, 내가 좋아한 식당·카페·숙박·미용실 등 장소를 지도와 목록으로 모으는 개인 취향 아카이브입니다. 회원별 저장 기록을 바탕으로 지역에서 사람들이 자주 선택한 장소와 분위기를 요약해 추천하는 것이 장기 목표입니다.
 
 ## 목표와 제품 원칙
