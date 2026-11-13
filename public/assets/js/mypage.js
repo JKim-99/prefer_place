@@ -71,12 +71,15 @@
     try { await patch({ action: 'password', ...data }); if (epoch !== authEpoch) return; form.reset(); status.textContent = '비밀번호를 변경했습니다. 다른 기기의 로그인은 해제됩니다.'; }
     catch (error) { if (epoch === authEpoch) status.textContent = error.message; } finally { submit.disabled = false; }
   });
-  function renderPlaces() {
+  function matchesPlaceFilters(record) {
     const query = ($('place-record-search')?.value || '').trim().toLocaleLowerCase();
     const filter = $('place-visit-filter')?.value ?? 'all';
+    return (category === 'all' || record.category === category) && (filter === 'all' || (record.visit_status || '') === filter) && [record.alias, record.name, record.address, record.region_sido, record.region_district, record.note, record.visit_date, ...(record.tags || [])].some(value => (value || '').toLocaleLowerCase().includes(query));
+  }
+  function renderPlaces() {
     const list = $('mypage-place-list'); list.replaceChildren();
     $('export-places').disabled = !records.length;
-    const visible = records.filter(record => (category === 'all' || record.category === category) && (filter === 'all' || (record.visit_status || '') === filter) && [record.alias, record.name, record.address, record.region_sido, record.region_district, record.note, record.visit_date, ...(record.tags || [])].some(value => (value || '').toLocaleLowerCase().includes(query)));
+    const visible = records.filter(matchesPlaceFilters);
     $('mypage-places-status').textContent = visible.length ? `${visible.length}개의 장소` : (records.length ? '조건에 맞는 장소가 없어요.' : '아직 저장한 장소가 없어요. 지도에서 장소를 추가해 보세요.');
     visible.forEach(record => {
       const li = document.createElement('li'), info = document.createElement('div'), link = document.createElement('a'), region = document.createElement('small'), toggle = document.createElement('button');
@@ -109,7 +112,7 @@
       editor.addEventListener('submit', async event => {
         event.preventDefault(); save.disabled = true; message.textContent = '저장 중...';
         const epoch = authEpoch, tagText = tagInput.value, saved = { note: note.value, visitStatus: visit.value, visitDate: visitDate.value, tags: tagText.split(',').map(tag => tag.trim()).filter(Boolean) };
-        try { await api('/api/places/records', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'details', placeId: record.place_id, ...saved }) }); if (epoch !== authEpoch) return; record.note = saved.note; record.visit_status = saved.visitStatus; record.visit_date = saved.visitDate; record.tags = saved.tags; updateBadges(); if (note.value === saved.note && visit.value === saved.visitStatus && visitDate.value === saved.visitDate && tagInput.value === tagText) { drafts.delete(record.place_id); message.textContent = '기록을 저장했습니다.'; } else message.textContent = '저장 후 바뀐 내용은 다시 저장해 주세요.'; }
+        try { await api('/api/places/records', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'details', placeId: record.place_id, ...saved }) }); if (epoch !== authEpoch) return; record.note = saved.note; record.visit_status = saved.visitStatus; record.visit_date = saved.visitDate; record.tags = saved.tags; updateBadges(); if (note.value === saved.note && visit.value === saved.visitStatus && visitDate.value === saved.visitDate && tagInput.value === tagText) { drafts.delete(record.place_id); if (!matchesPlaceFilters(record)) { renderPlaces(); $('mypage-places-status').textContent += ' 기록을 저장했으며 현재 조건에 맞지 않아 숨겼어요.'; } else message.textContent = '기록을 저장했습니다.'; } else message.textContent = '저장 후 바뀐 내용은 다시 저장해 주세요.'; }
         catch (error) { if (epoch === authEpoch) message.textContent = error.message; } finally { save.disabled = false; }
       });
       const details = document.createElement('details'), summary = document.createElement('summary'); summary.textContent = '메모·방문 기록·태그'; details.append(summary, editor);
