@@ -11,17 +11,18 @@ export async function onRequestGet({ request, env }) {
   if (mode === 'mypage' || mode === 'mine') {
     const user = await currentUser(request, env.DB); if (!user) return json({ error: '로그인이 필요합니다.' }, 401);
     if (mode === 'mine' && (!sido || !district || sido.length > 40 || district.length > 40)) return json({ error: '지역을 확인해 주세요.' }, 400);
-    const statement = mode === 'mypage' ? env.DB.prepare(`SELECT ${columns}, r.note, r.visit_status, r.tags, r.visit_date ${join} WHERE r.user_id = ? ORDER BY r.created_at DESC`).bind(user.id) : env.DB.prepare(`SELECT ${columns}, r.note, r.visit_status, r.tags, r.visit_date ${join} WHERE r.user_id = ? AND r.region_sido = ? AND r.region_district = ? ORDER BY r.created_at DESC LIMIT 100`).bind(user.id, sido, district);
-    return json({ records: (await statement.all()).results.map(withPrivateData) });
+    const statement = mode === 'mypage' ? env.DB.prepare(`SELECT ${columns}, r.note, r.visit_status, r.tags, r.visit_date ${join} WHERE r.user_id = ? ORDER BY r.created_at DESC, r.place_id ASC`).bind(user.id) : env.DB.prepare(`SELECT ${columns}, r.note, r.visit_status, r.tags, r.visit_date ${join} WHERE r.user_id = ? AND r.region_sido = ? AND r.region_district = ? ORDER BY r.created_at DESC, r.place_id ASC LIMIT 101`).bind(user.id, sido, district);
+    const rows = (await statement.all()).results;
+    return json({ records: (mode === 'mine' ? rows.slice(0, 100) : rows).map(withPrivateData), hasMore: mode === 'mine' && rows.length > 100 });
   }
   if (!sido || !district || sido.length > 40 || district.length > 40) return json({ error: '지역을 확인해 주세요.' }, 400);
   if (mode === 'popular') {
-    const result = await env.DB.prepare(`SELECT p.id AS place_id, p.name, p.address, p.category, p.category_name, p.category_major, p.category_middle, p.category_version, p.longitude, p.latitude, COALESCE(p.source_version, p.data_version) AS data_version, COUNT(DISTINCT r.user_id) AS count FROM place_records r JOIN public_places p ON p.id = r.place_id WHERE r.region_sido = ? AND r.region_district = ? AND r.is_public = 1 GROUP BY r.place_id HAVING COUNT(DISTINCT r.user_id) >= 3 ORDER BY count DESC LIMIT 100`).bind(sido, district).all();
-    return json({ records: result.results.map(withCategory) });
+    const result = await env.DB.prepare(`SELECT p.id AS place_id, p.name, p.address, p.category, p.category_name, p.category_major, p.category_middle, p.category_version, p.longitude, p.latitude, COALESCE(p.source_version, p.data_version) AS data_version, COUNT(DISTINCT r.user_id) AS count FROM place_records r JOIN public_places p ON p.id = r.place_id WHERE r.region_sido = ? AND r.region_district = ? AND r.is_public = 1 GROUP BY r.place_id HAVING COUNT(DISTINCT r.user_id) >= 3 ORDER BY count DESC, p.id ASC LIMIT 101`).bind(sido, district).all();
+    return json({ records: result.results.slice(0, 100).map(withCategory), hasMore: result.results.length > 100 });
   }
   if (mode === 'anonymous') {
-    const result = await env.DB.prepare(`SELECT ${columns} ${join} WHERE r.is_public = 1 AND r.region_sido = ? AND r.region_district = ? AND r.user_id = (SELECT user_id FROM place_records WHERE is_public = 1 AND region_sido = ? AND region_district = ? AND place_id LIKE 'biz:%' GROUP BY user_id ORDER BY RANDOM() LIMIT 1) AND p.id IS NOT NULL LIMIT 100`).bind(sido, district, sido, district).all();
-    return json({ records: result.results.map(withCategory) });
+    const result = await env.DB.prepare(`SELECT ${columns} ${join} WHERE r.is_public = 1 AND r.region_sido = ? AND r.region_district = ? AND r.user_id = (SELECT user_id FROM place_records WHERE is_public = 1 AND region_sido = ? AND region_district = ? AND place_id LIKE 'biz:%' GROUP BY user_id ORDER BY RANDOM() LIMIT 1) AND p.id IS NOT NULL ORDER BY r.created_at DESC, r.place_id ASC LIMIT 101`).bind(sido, district, sido, district).all();
+    return json({ records: result.results.slice(0, 100).map(withCategory), hasMore: result.results.length > 100 });
   }
   return json({ error: '조회 방식을 확인해 주세요.' }, 400);
 }

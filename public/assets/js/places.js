@@ -3,7 +3,7 @@
   const $ = id => document.getElementById(id), status = $('place-status'), svg = $('region-map');
   const dialog = $('place-dialog'), searchStatus = $('place-search-status'), results = $('place-search-results');
   const legend = document.querySelector('.place-legend');
-  let region = null, mode = 'mine', live = [], records = [], generation = 0;
+  let region = null, mode = 'mine', live = [], records = [], generation = 0, hasMore = false;
   const icons = { restaurant: '🍴', cafe: '☕', stay: '🛏', shopping: '🛍', beauty: '💇', medical: '⚕️', culture: '🎭', education: '📚', other: '📍' };
   const category = code => ({ FD6: 'restaurant', CE7: 'cafe', AD5: 'stay', restaurant: 'restaurant', cafe: 'cafe', stay: 'stay', shopping: 'shopping', beauty: 'beauty', medical: 'medical', culture: 'culture', education: 'education', other: 'other' }[code] || 'other');
   const selectedCategories = () => new Set([...legend.querySelectorAll('input:checked')].map(i => i.value));
@@ -80,6 +80,7 @@
     const allowed = selectedCategories();
     const namedRecords = records.filter(record => allowed.has(category(record.category)) && matchesPersonalFilters(record.visit_status, record.tags) && (record.name || (record.alias && record.alias.trim()) || /^\d+$/.test(record.place_id)));
     status.textContent = !namedRecords.length ? '선택한 조건에 해당하는 기록이 없어요.' : mode === 'popular' ? '공개 저장 사용자 수 기준입니다.' : `${namedRecords.length}개의 장소`;
+    if (hasMore) status.textContent += mode === 'mine' ? ' 지역 기록 중 처음 100개만 표시합니다. 전체 기록은 마이페이지에서 확인해 주세요.' : ' 지역 기록 중 처음 100개만 표시합니다.';
     namedRecords.forEach(record => {
       const li = document.createElement('li'), isLegacy = /^\d+$/.test(record.place_id), link = document.createElement(isLegacy ? 'a' : 'button');
       if (isLegacy) { link.href = `https://place.map.kakao.com/${record.place_id}`; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = record.alias || '기존 카카오 장소 보기'; }
@@ -98,12 +99,12 @@
     try {
       const params = new URLSearchParams({ sido: region.sido, district: region.district, mode });
       const data = await api(`/api/places/records?${params}`); if (version !== generation) return;
-      records = data.records || []; live = records.filter(r => r.name && Number.isFinite(Number(r.longitude)) && Number.isFinite(Number(r.latitude))).map(r => ({ id: r.place_id, name: r.alias || r.name, address: r.address, category: r.category, categoryName: r.category_name, categoryMajor: r.category_major, categoryMiddle: r.category_middle, visitStatus: r.visit_status, tags: r.tags, x: r.longitude, y: r.latitude, dataVersion: r.data_version })); renderRecords();
-    } catch (error) { if (version !== generation) return; records = []; live = []; $('saved-places').replaceChildren(); status.textContent = error.message; }
+      records = data.records || []; hasMore = !!data.hasMore; live = records.filter(r => r.name && Number.isFinite(Number(r.longitude)) && Number.isFinite(Number(r.latitude))).map(r => ({ id: r.place_id, name: r.alias || r.name, address: r.address, category: r.category, categoryName: r.category_name, categoryMajor: r.category_major, categoryMiddle: r.category_middle, visitStatus: r.visit_status, tags: r.tags, x: r.longitude, y: r.latitude, dataVersion: r.data_version })); renderRecords();
+    } catch (error) { if (version !== generation) return; records = []; live = []; hasMore = false; $('saved-places').replaceChildren(); status.textContent = error.message; }
     renderMarkers();
   }
-  document.addEventListener('place-auth-change', event => { if (!event.detail.signedIn) { live = []; records = []; visitFilter.value = 'all'; tagFilter.value = ''; $('saved-places').replaceChildren(); renderMarkers(); } updatePersonalFilters(); if (region) loadRecords(); });
-  document.addEventListener('place-region-change', event => { region = event.detail; live = []; records = []; loadRecords(); });
+  document.addEventListener('place-auth-change', event => { if (!event.detail.signedIn) { live = []; records = []; hasMore = false; visitFilter.value = 'all'; tagFilter.value = ''; $('saved-places').replaceChildren(); renderMarkers(); } updatePersonalFilters(); if (region) loadRecords(); });
+  document.addEventListener('place-region-change', event => { region = event.detail; live = []; records = []; hasMore = false; $('saved-places').replaceChildren(); status.textContent = '불러오는 중...'; loadRecords(); });
   document.addEventListener('place-records-change', () => { if (region) loadRecords(); });
   legend.addEventListener('change', () => { renderMarkers(); renderRecords(); });
   visitFilter.addEventListener('change', () => { renderMarkers(); renderRecords(); });
@@ -111,7 +112,7 @@
   document.querySelectorAll('.place-view').forEach(button => button.addEventListener('click', () => {
     mode = button.dataset.view;
     updatePersonalFilters();
-    live = []; records = []; $('saved-places').replaceChildren(); renderMarkers(); status.textContent = '불러오는 중...';
+    live = []; records = []; hasMore = false; $('saved-places').replaceChildren(); renderMarkers(); status.textContent = '불러오는 중...';
     document.querySelectorAll('.place-view').forEach(item => { const active = item === button; item.classList.toggle('is-active', active); item.setAttribute('aria-pressed', String(active)); });
     loadRecords();
   }));

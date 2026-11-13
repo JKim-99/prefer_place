@@ -88,3 +88,16 @@ test('personal notes and visit state are validated and scoped to the owner', asy
   const publicQuery = calls.at(-1).sql;
   assert.doesNotMatch(publicQuery, /r\.note|r\.visit_status|r\.visit_date|r\.tags/);
 });
+test('map queries disclose a 100-record limit while mypage returns all records', async () => {
+  const { onRequestGet } = await import(recordsUrl);
+  const rows = Array.from({length:101}, (_,i) => ({place_id:`biz:${i}`,name:`장소 ${i}`,category:'other',tags:'[]'}));
+  const db = { prepare() { return { bind() { return { first:async()=>({id:'owner'}),all:async()=>({results:rows}) }; } }; } };
+  const base = 'https://example.test/api/places/records';
+  const headers = {cookie:`place_session=${'a'.repeat(64)}`};
+  const mine = await (await onRequestGet({request:new Request(`${base}?mode=mine&sido=A&district=B`,{headers}),env:{DB:db}})).json();
+  assert.equal(mine.records.length,100); assert.equal(mine.hasMore,true);
+  const publicMap = await (await onRequestGet({request:new Request(`${base}?mode=popular&sido=A&district=B`),env:{DB:db}})).json();
+  assert.equal(publicMap.records.length,100); assert.equal(publicMap.hasMore,true);
+  const mypage = await (await onRequestGet({request:new Request(`${base}?mode=mypage`,{headers}),env:{DB:db}})).json();
+  assert.equal(mypage.records.length,101); assert.equal(mypage.hasMore,false);
+});
