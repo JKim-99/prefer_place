@@ -13,7 +13,14 @@ export async function onRequestPost({ request, env }) {
     const token = await newSession(env.DB, id);
     return json({ user: { id, username, nickname, email, gender, avatar: null, places_public: 1 } }, 201, { 'set-cookie': cookie(request, token, 604800) });
   } catch (error) {
-    if (String(error?.message).includes('UNIQUE constraint failed')) return json({ error: '이미 사용 중인 아이디, 닉네임 또는 이메일입니다.' }, 409);
+    if (String(error?.message).includes('UNIQUE constraint failed')) {
+      const [usernameMatch, nicknameMatch] = await Promise.all([
+        env.DB.prepare('SELECT 1 AS found FROM users WHERE username = ? COLLATE NOCASE LIMIT 1').bind(username).first(),
+        env.DB.prepare('SELECT 1 AS found FROM users WHERE lower(trim(nickname)) = lower(?) LIMIT 1').bind(nickname).first()
+      ]);
+      const fields = { username: !!usernameMatch, nickname: !!nicknameMatch };
+      return json({ error: fields.username || fields.nickname ? '이미 사용 중인 항목을 확인해 주세요.' : '이미 사용 중인 이메일입니다.', fields }, 409);
+    }
     return json({ error: '회원가입을 처리하지 못했습니다.' }, 500);
   }
 }

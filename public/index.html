@@ -6,9 +6,9 @@
   <meta name="description" content="좋아하는 장소와 그 이유를 모으는 나만의 취향 지도">
   <meta name="theme-color" content="#f4f0e7">
   <title>취향지도 — 좋아하는 장소를 모으는 지도</title>
-  <link rel="stylesheet" href="assets/css/styles.css?v=44">
+  <link rel="stylesheet" href="assets/css/styles.css?v=45">
   <script src="assets/js/app.js?v=20" defer></script>
-  <script src="assets/js/auth.js?v=10" defer></script>
+  <script src="assets/js/auth.js?v=11" defer></script>
   <script src="assets/js/catalog.js?v=2" defer></script>
   <script src="assets/js/places.js?v=29" defer></script>
   <script src="assets/js/mypage.js?v=21" defer></script>
@@ -42,8 +42,8 @@
 
   <dialog id="place-dialog" aria-labelledby="place-dialog-title"><div class="auth-dialog-head"><div><h2 id="place-dialog-title">장소 추가하기</h2><p>선택한 지역에서 장소를 검색해 주세요.</p></div><button id="place-dialog-close" type="button" class="close-button" aria-label="닫기">×</button></div><form id="place-search-form"><label for="place-query">장소 이름</label><div class="place-search-row"><input id="place-query" type="search" minlength="2" maxlength="80" required placeholder="장소 이름 입력" autocomplete="off" aria-describedby="place-search-status"><button type="submit">검색</button></div></form><div id="place-search-status" role="status"></div><ul id="place-search-results" class="place-search-results"></ul><p class="place-attribution">장소 정보 제공: <a href="https://www.data.go.kr/data/15083033/fileData.do" target="_blank" rel="noopener noreferrer">소상공인시장진흥공단</a></p></dialog>
   <dialog id="auth-dialog" aria-labelledby="auth-title"><div class="auth-dialog-head"><div><h2 id="auth-title">로그인</h2></div><button id="auth-close" type="button" class="close-button" aria-label="닫기">×</button></div><form id="auth-form">
-    <label>아이디<input id="auth-username" name="username" autocomplete="username" required maxlength="254"></label>
-    <label id="nickname-field" hidden>닉네임<input id="auth-nickname" name="nickname" autocomplete="nickname" minlength="2" maxlength="30"></label>
+    <label>아이디<input id="auth-username" name="username" autocomplete="username" required maxlength="254" aria-describedby="auth-username-error"><span class="auth-field-error" id="auth-username-error" role="status" aria-live="polite"></span></label>
+    <label id="nickname-field" hidden>닉네임<input id="auth-nickname" name="nickname" autocomplete="nickname" minlength="2" maxlength="30" aria-describedby="auth-nickname-error"><span class="auth-field-error" id="auth-nickname-error" role="status" aria-live="polite"></span></label>
     <label id="email-field" hidden>이메일<input id="auth-email" name="email" type="email" autocomplete="email" maxlength="254"></label>
     <label>비밀번호<input id="auth-password" name="password" type="password" autocomplete="current-password" required minlength="10" maxlength="128"></label>
     <label id="confirm-field" hidden>비밀번호 확인<input id="auth-confirm" name="passwordConfirm" type="password" autocomplete="new-password" minlength="10" maxlength="128"></label>

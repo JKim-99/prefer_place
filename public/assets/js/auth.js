@@ -3,10 +3,31 @@
   const $ = id => document.getElementById(id);
   const dialog = $('auth-dialog'), form = $('auth-form'), error = $('auth-error');
   let signup = false, authEpoch = 0;
+  const checkVersions = { username: 0, nickname: 0 };
+  function fieldError(field, duplicate) {
+    const input = $(`auth-${field}`), hint = $(`auth-${field}-error`);
+    if (!input || !hint) return;
+    hint.textContent = duplicate ? (field === 'username' ? '이미 사용 중인 아이디입니다.' : '이미 사용 중인 닉네임입니다.') : '';
+    if (duplicate) input.setAttribute('aria-invalid', 'true'); else input.removeAttribute('aria-invalid');
+  }
+  for (const field of ['username', 'nickname']) {
+    const input = $(`auth-${field}`);
+    input?.addEventListener('input', () => { checkVersions[field]++; fieldError(field, false); });
+    input?.addEventListener('blur', async () => {
+      const value = input.value.trim(), version = ++checkVersions[field];
+      if (!signup || (field === 'username' ? !/^[A-Za-z0-9_]{4,30}$/.test(value) : value.length < 2 || value.length > 30)) return;
+      try {
+        const response = await fetch('/api/auth/availability', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ field, value }) });
+        const result = await response.json();
+        if (response.ok && signup && version === checkVersions[field] && input.value.trim() === value) fieldError(field, !result.available);
+      } catch { /* Signup remains authoritative if the optional check fails. */ }
+    });
+  }
   const savedId = () => { try { return localStorage.getItem('prefer-place-login-id') || ''; } catch { return ''; } };
   function setMode(value) {
     if (!form || !error) return;
     signup = value; error.textContent = ''; form.reset();
+    for (const field of ['username', 'nickname']) { checkVersions[field]++; fieldError(field, false); }
     $('auth-title').textContent = signup ? '회원가입' : '로그인';
     ['nickname', 'email', 'confirm', 'gender'].forEach(name => { $(`${name}-field`).hidden = !signup; });
     ['auth-nickname', 'auth-email', 'auth-confirm'].forEach(id => { $(id).required = signup; });
@@ -44,7 +65,16 @@
     submit.disabled = true;
     try {
       const response = await fetch(`/api/auth/${signup ? 'signup' : 'login'}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-      const result = await response.json(); if (!response.ok) throw new Error(result.error || '요청을 처리하지 못했습니다.');
+      const result = await response.json();
+      if (!response.ok) {
+        if (signup && response.status === 409 && result.fields) {
+          for (const field of ['username', 'nickname']) {
+            checkVersions[field]++;
+            if ($(`auth-${field}`).value.trim() === String(data[field] || '').trim()) fieldError(field, !!result.fields[field]);
+          }
+        }
+        throw new Error(result.error || '요청을 처리하지 못했습니다.');
+      }
       if (!signup) { try { if ($('remember-id').checked) localStorage.setItem('prefer-place-login-id', data.username.trim()); else localStorage.removeItem('prefer-place-login-id'); } catch {} }
       showUser(result.user); form.reset(); dialog?.close();
     } catch (e) { if (error) error.textContent = e instanceof SyntaxError ? '로그인 서버에 연결할 수 없습니다.' : e.message || '로그인 서버에 연결할 수 없습니다.'; }
