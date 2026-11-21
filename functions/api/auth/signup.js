@@ -11,9 +11,9 @@ export async function onRequestPost({ request, env }) {
     const id = crypto.randomUUID(); const passwordHash = await hashPassword(body.password);
     await env.DB.prepare('INSERT INTO users (id, username, email, nickname, password_hash, gender) VALUES (?, ?, ?, ?, ?, ?)').bind(id, username, email, nickname, passwordHash, gender).run();
     const token = await newSession(env.DB, id);
-    return json({ user: { id, username, nickname, email, gender, avatar: null } }, 201, { 'set-cookie': cookie(request, token, 604800) });
+    return json({ user: { id, username, nickname, email, gender, avatar: null, places_public: 1 } }, 201, { 'set-cookie': cookie(request, token, 604800) });
   } catch (error) {
-    if (String(error?.message).includes('UNIQUE constraint failed')) return json({ error: '이미 사용 중인 아이디 또는 이메일입니다.' }, 409);
+    if (String(error?.message).includes('UNIQUE constraint failed')) return json({ error: '이미 사용 중인 아이디, 닉네임 또는 이메일입니다.' }, 409);
     return json({ error: '회원가입을 처리하지 못했습니다.' }, 500);
   }
 }

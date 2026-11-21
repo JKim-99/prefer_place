@@ -5,6 +5,11 @@ export async function onRequestPatch({ request, env }) {
   if (!env.DB) return json({ error: '사용자 데이터베이스가 설정되지 않았습니다.' }, 503);
   const body = await readBody(request, 200000); if (!body) return json({ error: '요청 또는 이미지 크기를 확인해 주세요.' }, 400);
   const user = await currentUser(request, env.DB); if (!user) return json({ error: '로그인이 필요합니다.' }, 401);
+  if (body.action === 'visibility') {
+    if (typeof body.isPublic !== 'boolean') return json({ error: '공개 설정을 확인해 주세요.' }, 400);
+    await env.DB.prepare('UPDATE users SET places_public = ? WHERE id = ?').bind(body.isPublic ? 1 : 0, user.id).run();
+    return json({ ok: true, placesPublic: body.isPublic });
+  }
   if (body.action === 'profile') {
     const nickname = typeof body.nickname === 'string' ? body.nickname.trim() : '';
     const username = typeof body.username === 'string' ? body.username.trim().toLowerCase() : '';
@@ -14,10 +19,10 @@ export async function onRequestPatch({ request, env }) {
       const old = await env.DB.prepare('SELECT username FROM users WHERE id = ?').bind(user.id).first();
       if (old.username && old.username.toLowerCase() !== username) return json({ error: '아이디는 변경할 수 없습니다.' }, 400);
       await env.DB.prepare('UPDATE users SET username = ?, nickname = ?, gender = ?, avatar = ? WHERE id = ?').bind(username, nickname, gender, avatar, user.id).run();
-      const updated = await env.DB.prepare('SELECT id, username, nickname, email, gender, avatar FROM users WHERE id = ?').bind(user.id).first();
+      const updated = await env.DB.prepare('SELECT id, username, nickname, email, gender, avatar, places_public FROM users WHERE id = ?').bind(user.id).first();
       return json({ user: updated });
     } catch (error) {
-      if (String(error?.message).includes('UNIQUE constraint failed')) return json({ error: '이미 사용 중인 아이디입니다.' }, 409);
+      if (String(error?.message).includes('UNIQUE constraint failed')) return json({ error: '이미 사용 중인 아이디 또는 닉네임입니다.' }, 409);
       return json({ error: '정보를 저장하지 못했습니다.' }, 500);
     }
   }

@@ -9,7 +9,7 @@ export async function onRequestPost({ request, env }) {
   const now = Math.floor(Date.now() / 1000);
   const attempt = await env.DB.prepare('SELECT failures, locked_until FROM login_attempts WHERE email = ?').bind(identifier).first();
   if (attempt?.locked_until > now) return json({ error: '잠시 후 다시 시도해 주세요.' }, 429);
-  const user = await env.DB.prepare('SELECT id, username, nickname, email, gender, avatar, password_hash FROM users WHERE username = ? OR (username IS NULL AND email = ?)').bind(identifier, identifier).first();
+  const user = await env.DB.prepare('SELECT id, username, nickname, email, gender, avatar, places_public, password_hash FROM users WHERE username = ? OR (username IS NULL AND email = ?)').bind(identifier, identifier).first();
   const passwordMatches = await verifyPassword(body.password, user?.password_hash || DUMMY_HASH);
   if (!user || !passwordMatches) {
     await env.DB.prepare(`INSERT INTO login_attempts (email, failures, locked_until, updated_at) VALUES (?, 1, 0, ?)
@@ -19,5 +19,5 @@ export async function onRequestPost({ request, env }) {
   }
   await env.DB.prepare('DELETE FROM login_attempts WHERE email = ?').bind(identifier).run();
   const token = await newSession(env.DB, user.id);
-  return json({ user: { id: user.id, username: user.username, nickname: user.nickname, email: user.email, gender: user.gender, avatar: user.avatar } }, 200, { 'set-cookie': cookie(request, token, 604800) });
+  return json({ user: { id: user.id, username: user.username, nickname: user.nickname, email: user.email, gender: user.gender, avatar: user.avatar, places_public: user.places_public } }, 200, { 'set-cookie': cookie(request, token, 604800) });
 }

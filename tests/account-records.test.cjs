@@ -17,15 +17,15 @@ function request(path, data, signed = true, origin = 'https://example.test') {
   return new Request(`https://example.test${path}`, { method: 'PATCH', headers: { origin, 'content-type': 'application/json', ...(signed ? { cookie: `place_session=${'a'.repeat(64)}` } : {}) }, body: JSON.stringify(data) });
 }
 test('privacy changes require same-origin authentication and are scoped to the session owner', async () => {
-  const { onRequestPatch } = await import(recordsUrl); const calls = [];
+  const { onRequestPatch } = await import(profileUrl); const calls = [];
   const db = { prepare(sql) { return { bind(...args) { calls.push({ sql, args }); return { first: async () => ({ id: 'owner' }), run: async () => ({ meta: { changes: 1 } }) }; } }; } };
-  const body = { placeId: '12345', isPublic: true };
-  assert.equal((await onRequestPatch({ request: request('/api/places/records', body, false), env: { DB: db } })).status, 401);
-  assert.equal((await onRequestPatch({ request: request('/api/places/records', body, true, 'https://evil.test'), env: { DB: db } })).status, 400);
-  assert.equal((await onRequestPatch({ request: request('/api/places/records', body), env: { DB: db } })).status, 200);
-  const update = calls.find(c => c.sql.startsWith('UPDATE place_records'));
-  assert.match(update.sql, /WHERE user_id = \? AND place_id = \?/);
-  assert.deepEqual(update.args, [1, 'owner', '12345']);
+  const body = { action: 'visibility', isPublic: true };
+  assert.equal((await onRequestPatch({ request: request('/api/auth/profile', body, false), env: { DB: db } })).status, 401);
+  assert.equal((await onRequestPatch({ request: request('/api/auth/profile', body, true, 'https://evil.test'), env: { DB: db } })).status, 400);
+  assert.equal((await onRequestPatch({ request: request('/api/auth/profile', body), env: { DB: db } })).status, 200);
+  const update = calls.find(c => c.sql.startsWith('UPDATE users'));
+  assert.match(update.sql, /WHERE id = \?/);
+  assert.deepEqual(update.args, [1, 'owner']);
 });
 test('catalog lookup verifies source identity, region and coordinates', async () => {
   const { lookupPlace } = await import(lookupUrl);
@@ -79,7 +79,7 @@ test('personal notes and visit state are validated and scoped to the owner', asy
   assert.match(update.sql, /WHERE user_id = \? AND place_id = \?/);
   assert.deepEqual(update.args, ['조용한 곳', 'again', 'owner', 'biz:abc']);
   assert.equal((await onRequestPatch({request: request('/api/places/records', {...details, tags: [' 조용함 ', '산책']}), env: {DB: db}})).status, 200);
-  const tagUpdate = calls.findLast(c => c.sql.includes('visit_status = ?, tags = ?'));
+  const tagUpdate = calls.findLast(c => c.sql.includes('visit_intent = ?, tags = ?'));
   assert.deepEqual(tagUpdate.args, ['조용한 곳', 'again', '["조용함","산책"]', 'owner', 'biz:abc']);
   assert.equal((await onRequestPatch({request:request('/api/places/records',{...details,tags:['산책'],visitDate:'2024-02-29'}),env:{DB:db}})).status,200);
   const dateUpdate = calls.findLast(c => c.sql.includes('visit_date = ?'));

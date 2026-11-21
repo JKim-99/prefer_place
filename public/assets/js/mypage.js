@@ -3,7 +3,7 @@
   const $ = id => document.getElementById(id), dialog = $('mypage-dialog'), profilePage = document.body.classList.contains('mypage-route') ? $('profile-page') : null;
   const icons = { restaurant: '🍴', cafe: '☕', stay: '🛏', shopping: '🛍', beauty: '💇', medical: '⚕️', culture: '🎭', education: '📚', other: '📍' };
   const labels = { restaurant: '음식점', cafe: '카페·디저트', stay: '숙박', shopping: '쇼핑', beauty: '미용', medical: '의료', culture: '문화', education: '교육', other: '기타' };
-  const visitLabels = { want:'가보고 싶은 곳', visited:'방문한 곳', again:'다시 가고 싶은 곳' };
+  const visitLabels = { want:'가보고 싶은 곳', again:'다시 방문할 곳', avoid:'다시 방문하지 않을 곳' };
   let avatar = null, records = [], category = 'all', authEpoch = 0, loadGeneration = 0;
   let firstTab = window.location?.hash === '#places' ? 'places' : 'profile';
   const drafts = new Map();
@@ -20,8 +20,17 @@
     $('profile-username').value = user.username || ''; $('profile-username').readOnly = !!user.username;
     $('profile-username-hint').textContent = user.username ? '아이디는 변경할 수 없습니다.' : '기존 계정의 새 로그인 아이디를 설정해 주세요. 영문·숫자·밑줄 4~30자';
     $('profile-nickname').value = user.nickname; $('profile-email').value = user.email; $('profile-gender').value = user.gender || '';
+    if ($('places-public')) $('places-public').checked = !!user.places_public;
     avatar = user.avatar || null; $('profile-avatar').value = ''; showAvatar();
   }
+  $('places-public')?.addEventListener('change', async event => {
+    const input = event.target, desired = input.checked, epoch = authEpoch;
+    if (desired && !window.confirm('모든 장소의 이름, 위치와 방문 의향이 공개됩니다. 공개할까요?')) { input.checked = false; return; }
+    input.disabled = true;
+    try { await patch({ action: 'visibility', isPublic: desired }); if (epoch === authEpoch) { window.placeCurrentUser.places_public = desired ? 1 : 0; $('visibility-status').textContent = '공개 설정을 저장했습니다.'; document.dispatchEvent(new CustomEvent('place-records-change')); } }
+    catch (error) { if (epoch === authEpoch) { input.checked = !desired; $('visibility-status').textContent = error.message; } }
+    finally { input.disabled = false; }
+  });
   function selectTab(name) {
     dialog.querySelectorAll('[data-tab]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.tab === name)));
     ['profile', 'places', 'password'].forEach(tab => { $(`mypage-${tab}`).hidden = tab !== name; });
@@ -96,14 +105,12 @@
         badges.hidden = !badges.children.length;
       }
       updateBadges(); info.append(badges);
-      toggle.type = 'button'; toggle.textContent = record.is_public ? '공개' : '비공개'; toggle.setAttribute('aria-pressed', String(!!record.is_public)); toggle.setAttribute('aria-label', `${record.alias || record.name || '장소'} 공개 설정: ${toggle.textContent}`);
-      toggle.addEventListener('click', async () => { if (!record.is_public && !window.confirm('이 장소의 이름과 위치가 익명 장소 탐색에 표시될 수 있습니다. 메모, 방문 기록과 태그는 공개되지 않습니다. 공개할까요?')) return; toggle.disabled = true; const epoch = authEpoch; try { await api('/api/places/records', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ placeId: record.place_id, isPublic: !record.is_public }) }); if (epoch !== authEpoch) return; record.is_public = record.is_public ? 0 : 1; toggle.textContent = record.is_public ? '공개' : '비공개'; toggle.setAttribute('aria-pressed', String(!!record.is_public)); toggle.setAttribute('aria-label', `${record.alias || record.name || '장소'} 공개 설정: ${toggle.textContent}`); document.dispatchEvent(new CustomEvent('place-records-change')); } catch (error) { if (epoch === authEpoch) $('mypage-places-status').textContent = error.message; } finally { toggle.disabled = false; } });
       const editor = document.createElement('form'), noteLabel = document.createElement('label'), note = document.createElement('textarea'), visitLabel = document.createElement('label'), visit = document.createElement('select'), dateLabel = document.createElement('label'), visitDate = document.createElement('input'), tagLabel = document.createElement('label'), tagInput = document.createElement('input'), save = document.createElement('button'), message = document.createElement('p');
       editor.className = 'place-record-editor';
       const draft = drafts.get(record.place_id) || { note: record.note || '', visitStatus: record.visit_status || '', visitDate: record.visit_date || '', tags: (record.tags || []).join(', ') };
       noteLabel.textContent = '나만의 메모'; note.maxLength = 1000; note.rows = 3; note.value = draft.note; noteLabel.append(note);
       visitLabel.textContent = '방문 상태';
-      [['', '선택하지 않음'], ['want', '가보고 싶은 곳'], ['visited', '방문한 곳'], ['again', '다시 가고 싶은 곳']].forEach(([value, text]) => { const option = document.createElement('option'); option.value = value; option.textContent = text; visit.append(option); });
+      [['', '선택하지 않음'], ['want', '가보고 싶은 곳'], ['again', '다시 방문할 곳'], ['avoid', '다시 방문하지 않을 곳']].forEach(([value, text]) => { const option = document.createElement('option'); option.value = value; option.textContent = text; visit.append(option); });
       visit.value = draft.visitStatus; visitLabel.append(visit); save.type = 'submit'; save.textContent = '기록 저장'; message.setAttribute('role', 'status');
       dateLabel.textContent = '방문 날짜 (선택)'; visitDate.type = 'date'; visitDate.min = '1900-01-01'; visitDate.max = '2100-12-31'; visitDate.value = draft.visitDate || ''; dateLabel.append(visitDate);
       tagLabel.textContent = '나만의 태그 (쉼표로 구분, 최대 8개)'; tagInput.type = 'text'; tagInput.maxLength = 167; tagInput.placeholder = '예: 조용함, 작업하기 좋은'; tagInput.value = draft.tags; tagLabel.append(tagInput);
@@ -117,7 +124,7 @@
         catch (error) { if (epoch === authEpoch) message.textContent = error.message; } finally { save.disabled = false; }
       });
       const details = document.createElement('details'), summary = document.createElement('summary'); summary.textContent = '메모·방문 기록·태그'; details.append(summary, editor);
-      info.append(details); li.append(info, toggle); list.append(li);
+      info.append(details); li.append(info); list.append(li);
     });
   }
   async function loadPlaces() { const generation = ++loadGeneration, epoch = authEpoch; records = []; $('mypage-place-list').replaceChildren(); $('export-places').disabled = true; $('mypage-places-status').textContent = '불러오는 중...'; try { const result = await api('/api/places/records?mode=mypage'); if (generation !== loadGeneration || epoch !== authEpoch) return; records = result.records || []; renderPlaces(); } catch (error) { if (generation === loadGeneration && epoch === authEpoch) $('mypage-places-status').textContent = error.message; } }
@@ -127,7 +134,7 @@
   $('export-places')?.addEventListener('click', () => {
     if (!window.placeCurrentUser || !records.length) return;
     const exportedAt = new Date().toISOString();
-    const payload = { format: 'prefer-place-records-v1', exportedAt, records: records.map(record => ({ placeId: record.place_id, name: record.name || '', alias: record.alias || '', address: record.address || '', sido: record.region_sido, district: record.region_district, category: record.category, latitude: record.latitude ?? null, longitude: record.longitude ?? null, note: record.note || '', visitStatus: record.visit_status || '', visitDate: record.visit_date || '', tags: record.tags || [], isPublic: !!record.is_public })) };
+    const payload = { format: 'prefer-place-records-v1', exportedAt, records: records.map(record => ({ placeId: record.place_id, name: record.name || '', alias: record.alias || '', address: record.address || '', sido: record.region_sido, district: record.region_district, category: record.category, latitude: record.latitude ?? null, longitude: record.longitude ?? null, note: record.note || '', visitStatus: record.visit_status || '', visitDate: record.visit_date || '', tags: record.tags || [], isPublic: !!window.placeCurrentUser.places_public })) };
     const objectUrl = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], {type:'application/json;charset=utf-8'}));
     const link = document.createElement('a'); link.href = objectUrl; link.download = `prefer-place-${exportedAt.slice(0,10)}.json`; document.body.append(link); link.click(); link.remove();
     setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);

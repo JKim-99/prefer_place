@@ -11,7 +11,7 @@ export async function onRequestGet({ request, env }) {
   if (mode === 'mypage' || mode === 'mine') {
     const user = await currentUser(request, env.DB); if (!user) return json({ error: '로그인이 필요합니다.' }, 401);
     if (mode === 'mine' && (!sido || !district || sido.length > 40 || district.length > 40)) return json({ error: '지역을 확인해 주세요.' }, 400);
-    const privateColumns = `${columns}, r.note, r.visit_status, r.tags, r.visit_date, r.created_at AS saved_at`;
+    const privateColumns = `${columns}, r.note, r.visit_intent AS visit_status, r.tags, r.visit_date, r.created_at AS saved_at`;
     const cursor = mode === 'mine' ? url.searchParams.get('cursor') || '' : '';
     const cursorMatch = cursor.match(/^(\d{1,12}):((?:\d{1,30}|biz:[A-Za-z0-9]{1,40}))$/);
     if (cursor && !cursorMatch) return json({ error: '목록 위치를 확인해 주세요.' }, 400);
@@ -29,13 +29,21 @@ export async function onRequestGet({ request, env }) {
     return json({ records: page.map(withPrivateData), hasMore, nextCursor: hasMore ? `${last.saved_at}:${last.place_id}` : null });
   }
   if (!sido || !district || sido.length > 40 || district.length > 40) return json({ error: '지역을 확인해 주세요.' }, 400);
+  const intent = url.searchParams.get('intent') || 'all';
+  if (!['all', 'want', 'again', 'avoid'].includes(intent)) return json({ error: '방문 의향을 확인해 주세요.' }, 400);
   if (mode === 'popular') {
-    const result = await env.DB.prepare(`SELECT p.id AS place_id, p.name, p.address, p.category, p.category_name, p.category_major, p.category_middle, p.category_version, p.longitude, p.latitude, COALESCE(p.source_version, p.data_version) AS data_version, COUNT(DISTINCT r.user_id) AS count FROM place_records r JOIN public_places p ON p.id = r.place_id WHERE r.region_sido = ? AND r.region_district = ? AND r.is_public = 1 GROUP BY r.place_id HAVING COUNT(DISTINCT r.user_id) >= 3 ORDER BY count DESC, p.id ASC LIMIT 101`).bind(sido, district).all();
+    const result = await env.DB.prepare(`SELECT p.id AS place_id, p.name, p.address, p.category, p.category_name, p.category_major, p.category_middle, p.category_version, p.longitude, p.latitude, COALESCE(p.source_version, p.data_version) AS data_version, COUNT(DISTINCT r.user_id) AS count FROM place_records r JOIN users u ON u.id = r.user_id AND u.places_public = 1 JOIN public_places p ON p.id = r.place_id WHERE r.region_sido = ? AND r.region_district = ? GROUP BY r.place_id HAVING COUNT(DISTINCT r.user_id) >= 10 AND (? = 'all' OR SUM(CASE WHEN r.visit_intent = ? THEN 1 ELSE 0 END) * 100 >= COUNT(DISTINCT r.user_id) * 30) ORDER BY count DESC, p.id ASC LIMIT 101`).bind(sido, district, intent, intent).all();
     return json({ records: result.results.slice(0, 100).map(withCategory), hasMore: result.results.length > 100 });
   }
-  if (mode === 'anonymous') {
-    const result = await env.DB.prepare(`SELECT ${columns} ${join} WHERE r.is_public = 1 AND r.region_sido = ? AND r.region_district = ? AND r.user_id = (SELECT user_id FROM place_records WHERE is_public = 1 AND region_sido = ? AND region_district = ? AND place_id LIKE 'biz:%' GROUP BY user_id ORDER BY RANDOM() LIMIT 1) AND p.id IS NOT NULL ORDER BY r.created_at DESC, r.place_id ASC LIMIT 101`).bind(sido, district, sido, district).all();
-    return json({ records: result.results.slice(0, 100).map(withCategory), hasMore: result.results.length > 100 });
+  if (mode === 'anonymous' || mode === 'user') {
+    const nickname = (url.searchParams.get('nickname') || '').trim();
+    const selectedId = url.searchParams.get('userId') || '';
+    const user = mode === 'anonymous' && /^[0-9a-f-]{36}$/i.test(selectedId) ? await env.DB.prepare('SELECT id, nickname FROM users WHERE places_public = 1 AND id = ?').bind(selectedId).first() : mode === 'user'
+      ? await env.DB.prepare('SELECT id, nickname FROM users WHERE places_public = 1 AND lower(trim(nickname)) = lower(?)').bind(nickname).first()
+      : await env.DB.prepare(`SELECT u.id, u.nickname FROM users u WHERE u.places_public = 1 AND EXISTS (SELECT 1 FROM place_records r JOIN public_places p ON p.id = r.place_id WHERE r.user_id = u.id AND r.region_sido = ? AND r.region_district = ?) ORDER BY RANDOM() LIMIT 1`).bind(sido, district).first();
+    if (!user) return json({ records: [], user: null, hasMore: false });
+    const result = await env.DB.prepare(`SELECT p.id AS place_id, p.name, p.address, p.category, p.category_name, p.category_major, p.category_middle, p.category_version, p.longitude, p.latitude, COALESCE(p.source_version, p.data_version) AS data_version, r.visit_intent AS visit_status FROM place_records r JOIN users u ON u.id = r.user_id AND u.places_public = 1 JOIN public_places p ON p.id = r.place_id WHERE r.user_id = ? AND r.region_sido = ? AND r.region_district = ? AND (? = 'all' OR r.visit_intent = ?) ORDER BY r.created_at DESC, r.place_id ASC LIMIT 101`).bind(user.id, sido, district, intent, intent).all();
+    return json({ records: result.results.slice(0, 100).map(withCategory), user: { id: user.id, nickname: user.nickname }, hasMore: result.results.length > 100 });
   }
   return json({ error: '조회 방식을 확인해 주세요.' }, 400);
 }
@@ -57,7 +65,8 @@ export async function onRequestPost({ request, env }) {
   if (!env.DB) return json({ error: '데이터베이스가 설정되지 않았습니다.' }, 503);
   const body = await readBody(request); if (!body) return json({ error: '올바른 요청이 아닙니다.' }, 400);
   const user = await currentUser(request, env.DB); if (!user) return json({ error: '로그인이 필요합니다.' }, 401);
-  const { placeId, sido, district } = body;
+  const { placeId, sido, district, visitIntent } = body;
+  if (!['want', 'again', 'avoid'].includes(visitIntent)) return json({ error: '방문 의향을 선택해 주세요.' }, 400);
   if (!/^biz:[A-Za-z0-9]{1,40}$/.test(placeId || '') || typeof sido !== 'string' || typeof district !== 'string') return json({ error: '장소 정보를 확인해 주세요.' }, 400);
   if (!sido || sido.length > 40 || !district || district.length > 40) return json({ error: '지역을 확인해 주세요.' }, 400);
   let place = await env.DB.prepare('SELECT id, category FROM public_places WHERE id = ? AND region_sido = ? AND region_district = ?').bind(placeId, sido, district).first();
@@ -68,7 +77,7 @@ export async function onRequestPost({ request, env }) {
       place = { id: p.id, category: p.category };
     } catch (error) { return json({ error: error.message }, 502); }
   }
-  await env.DB.prepare(`INSERT INTO place_records (user_id, place_id, region_sido, region_district, alias, is_public, created_at, category) VALUES (?, ?, ?, ?, '', 0, ?, ?) ON CONFLICT(user_id, place_id) DO NOTHING`).bind(user.id, placeId, sido, district, Math.floor(Date.now()/1000), place.category).run();
+  await env.DB.prepare(`INSERT INTO place_records (user_id, place_id, region_sido, region_district, alias, is_public, created_at, category, visit_intent) VALUES (?, ?, ?, ?, '', 0, ?, ?, ?) ON CONFLICT(user_id, place_id) DO NOTHING`).bind(user.id, placeId, sido, district, Math.floor(Date.now()/1000), place.category, visitIntent).run();
   return json({ ok: true });
 }
 export async function onRequestDelete({ request, env }) {
@@ -85,8 +94,8 @@ export async function onRequestPatch({ request, env }) {
   if (!validId(body.placeId)) return json({ error: '장소를 확인해 주세요.' }, 400);
   let statement;
   if (body.action === 'details') {
-    if (typeof body.note !== 'string' || body.note.length > 1000 || !['', 'want', 'visited', 'again'].includes(body.visitStatus)) return json({ error: '메모 또는 방문 상태를 확인해 주세요.' }, 400);
-    const fields = ['note = ?', 'visit_status = ?'], values = [body.note, body.visitStatus];
+    if (typeof body.note !== 'string' || body.note.length > 1000 || !['', 'want', 'again', 'avoid'].includes(body.visitStatus)) return json({ error: '메모 또는 방문 상태를 확인해 주세요.' }, 400);
+    const fields = ['note = ?', 'visit_intent = ?'], values = [body.note, body.visitStatus];
     if (body.tags !== undefined) {
       if (!Array.isArray(body.tags) || body.tags.length > 8 || body.tags.some(tag => typeof tag !== 'string' || !tag.trim() || tag.trim().length > 20 || /[,\u0000-\u001f\u007f]/.test(tag))) return json({ error: '태그는 쉼표 없이 20자 이내로 최대 8개까지 입력해 주세요.' }, 400);
       const tags = body.tags.map(tag => tag.trim());
@@ -98,10 +107,7 @@ export async function onRequestPatch({ request, env }) {
       fields.push('visit_date = ?'); values.push(body.visitDate);
     }
     statement = env.DB.prepare(`UPDATE place_records SET ${fields.join(', ')} WHERE user_id = ? AND place_id = ?`).bind(...values, user.id, body.placeId);
-  } else {
-    if (body.action !== undefined || typeof body.isPublic !== 'boolean') return json({ error: '공개 설정을 확인해 주세요.' }, 400);
-    statement = env.DB.prepare('UPDATE place_records SET is_public = ? WHERE user_id = ? AND place_id = ?').bind(body.isPublic ? 1 : 0, user.id, body.placeId);
-  }
+  } else { return json({ error: '요청을 확인해 주세요.' }, 400); }
   const result = await statement.run();
   if (!result.meta.changes) return json({ error: '장소를 찾을 수 없습니다.' }, 404); return json({ ok: true });
 }

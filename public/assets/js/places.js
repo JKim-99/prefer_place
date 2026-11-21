@@ -3,19 +3,19 @@
   const $ = id => document.getElementById(id), status = $('place-status'), svg = $('region-map');
   const dialog = $('place-dialog'), searchStatus = $('place-search-status'), results = $('place-search-results');
   const legend = document.querySelector('.place-legend');
-  let region = null, mode = 'mine', live = [], records = [], generation = 0, hasMore = false, nextCursor = null, loadingMore = false;
+  let selectedUser = null, region = null, mode = 'mine', live = [], records = [], generation = 0, hasMore = false, nextCursor = null, loadingMore = false;
   const moreButton = $('load-more-places');
   const icons = { restaurant: '🍴', cafe: '☕', stay: '🛏', shopping: '🛍', beauty: '💇', medical: '⚕️', culture: '🎭', education: '📚', other: '📍' };
   const category = code => ({ FD6: 'restaurant', CE7: 'cafe', AD5: 'stay', restaurant: 'restaurant', cafe: 'cafe', stay: 'stay', shopping: 'shopping', beauty: 'beauty', medical: 'medical', culture: 'culture', education: 'education', other: 'other' }[code] || 'other');
   const selectedCategories = () => new Set([...legend.querySelectorAll('input:checked')].map(i => i.value));
-  const visitLabels = { want:'가보고 싶은 곳', visited:'방문한 곳', again:'다시 가고 싶은 곳' };
+  const visitLabels = { want:'가보고 싶은 곳', again:'다시 방문할 곳', avoid:'다시 방문하지 않을 곳' };
   const visitFilter = $('map-visit-filter'), tagFilter = $('map-tag-filter');
   const matchesPersonalFilters = (visitStatus, tags) => {
     if (mode !== 'mine') return true;
     const tag = tagFilter.value.trim().toLocaleLowerCase('ko');
     return (visitFilter.value === 'all' || visitFilter.value === (visitStatus || '')) && (!tag || (tags || []).some(value => value.toLocaleLowerCase('ko').includes(tag)));
   };
-  const updatePersonalFilters = () => { const hidden = mode !== 'mine' || !window.placeCurrentUser; $('map-visit-filter-label').hidden = hidden; $('map-tag-filter-label').hidden = hidden; };
+  const updatePersonalFilters = () => { $('map-visit-filter-label').hidden = mode === 'mine' && !window.placeCurrentUser; $('map-tag-filter-label').hidden = mode !== 'mine' || !window.placeCurrentUser; $('user-search').hidden = mode !== 'user'; };
   const tooltip = $('marker-tooltip'), detail = $('place-detail'), stage = $('map-stage');
   function clearPersonalDetail() { $('place-personal-details').hidden = true; ['place-personal-visit', 'place-personal-note', 'place-personal-tags'].forEach(id => { $(id).textContent = ''; }); }
   function hideInfo() { tooltip.hidden = true; detail.hidden = true; clearPersonalDetail(); }
@@ -32,6 +32,7 @@
     $('place-detail-address').textContent = [place.address || '주소 정보 없음', place.dataVersion ? `공공데이터 기준일 ${place.dataVersion}` : ''].filter(Boolean).join(' · ');
     $('place-detail-link').hidden = !place.url; if (place.url) $('place-detail-link').href = place.url;
     clearPersonalDetail();
+    const profileLink = $('place-profile-link'); profileLink.hidden = !selectedUser || !['anonymous', 'user'].includes(mode); if (!profileLink.hidden) profileLink.href = `/profile.html?id=${encodeURIComponent(selectedUser.id)}`;
     if (mode === 'mine' && window.placeCurrentUser) {
       const visit = [visitLabels[place.visitStatus], place.visitDate ? `방문일 ${place.visitDate}` : ''].filter(Boolean);
       $('place-personal-visit').textContent = visit.join(' · ') || '아직 방문 기록이 없어요.';
@@ -89,7 +90,7 @@
   }
   function renderRecords() {
     const list = $('saved-places'); list.replaceChildren();
-    if (!records.length) { status.textContent = mode === 'popular' ? '공개 기록이 3명 이상인 장소가 아직 없어요.' : mode === 'anonymous' ? '이 지역에 공개된 장소가 아직 없어요.' : '이 지역에 저장한 장소가 없어요.'; return; }
+    if (!records.length) { status.textContent = mode === 'popular' ? '공개 저장자가 10명 이상인 장소가 아직 없어요.' : mode === 'anonymous' ? '이 지역에 공개된 장소가 아직 없어요.' : '이 지역에 저장한 장소가 없어요.'; return; }
     const allowed = selectedCategories();
     const namedRecords = records.filter(record => allowed.has(category(record.category)) && matchesPersonalFilters(record.visit_status, record.tags) && (record.name || (record.alias && record.alias.trim()) || /^\d+$/.test(record.place_id)));
     status.textContent = !namedRecords.length ? '선택한 조건에 해당하는 기록이 없어요.' : mode === 'popular' ? '공개 저장 사용자 수 기준입니다.' : `${namedRecords.length}개의 장소`;
@@ -115,7 +116,11 @@
     try {
       const params = new URLSearchParams({ sido: region.sido, district: region.district, mode });
       if (cursor) params.set('cursor', cursor);
+      if (mode !== 'mine') params.set('intent', visitFilter.value === '' ? 'all' : visitFilter.value);
+      if (mode === 'user') params.set('nickname', $('user-query').value.trim());
+      if (mode === 'anonymous' && selectedUser) params.set('userId', selectedUser.id);
       const data = await api(`/api/places/records?${params}`); if (version !== generation) return;
+      if (mode === 'anonymous' || mode === 'user') selectedUser = data.user || null;
       const incoming = data.records || [], existing = new Set(records.map(record => record.place_id));
       records = append ? records.concat(incoming.filter(record => !existing.has(record.place_id))) : incoming;
       hasMore = !!data.hasMore; nextCursor = mode === 'mine' && typeof data.nextCursor === 'string' ? data.nextCursor : null;
@@ -125,14 +130,15 @@
     finally { if (version === generation) { loadingMore = false; moreButton.disabled = false; moreButton.hidden = mode !== 'mine' || !nextCursor; } }
   }
   document.addEventListener('place-auth-change', event => { if (!event.detail.signedIn) { live = []; records = []; hasMore = false; nextCursor = null; moreButton.hidden = true; visitFilter.value = 'all'; tagFilter.value = ''; $('saved-places').replaceChildren(); renderMarkers(); } updatePersonalFilters(); if (region) loadRecords(); });
-  document.addEventListener('place-region-change', event => { region = event.detail; live = []; records = []; hasMore = false; nextCursor = null; moreButton.hidden = true; $('saved-places').replaceChildren(); status.textContent = '불러오는 중...'; loadRecords(); });
+  document.addEventListener('place-region-change', event => { selectedUser = null; region = event.detail; live = []; records = []; hasMore = false; nextCursor = null; moreButton.hidden = true; $('saved-places').replaceChildren(); status.textContent = '불러오는 중...'; loadRecords(); });
   document.addEventListener('place-records-change', () => { if (region) loadRecords(); });
   legend.addEventListener('change', () => { renderMarkers(); renderRecords(); });
-  visitFilter.addEventListener('change', () => { renderMarkers(); renderRecords(); });
+  visitFilter.addEventListener('change', () => { if (mode === 'mine') { renderMarkers(); renderRecords(); } else loadRecords(); });
+  $('user-search').addEventListener('submit', event => { event.preventDefault(); selectedUser = null; loadRecords(); });
   tagFilter.addEventListener('input', () => { renderMarkers(); renderRecords(); });
   moreButton.addEventListener('click', () => loadRecords({ append: true }));
   document.querySelectorAll('.place-view').forEach(button => button.addEventListener('click', () => {
-    mode = button.dataset.view;
+    mode = button.dataset.view; selectedUser = null; visitFilter.value = 'all';
     updatePersonalFilters();
     live = []; records = []; hasMore = false; nextCursor = null; moreButton.hidden = true; $('saved-places').replaceChildren(); renderMarkers(); status.textContent = '불러오는 중...';
     document.querySelectorAll('.place-view').forEach(item => { const active = item === button; item.classList.toggle('is-active', active); item.setAttribute('aria-pressed', String(active)); });
@@ -188,11 +194,11 @@
         const li = document.createElement('li'); const title = document.createElement('strong'); title.append(document.createTextNode(`${icons[category(p.category)]} `)); const name = document.createElement('span'); highlightName(name, p.name, query); title.append(name);
         const detail = document.createElement('p'); detail.textContent = [p.categoryName, p.address].filter(Boolean).join(' · ');
         const form = document.createElement('form'); form.className = 'place-save-form';
-        const save = document.createElement('button'); save.type = 'submit'; save.textContent = '추가'; form.append(save);
+        const intent = document.createElement('select'); intent.required = true; intent.setAttribute('aria-label', '방문 의향'); [['','방문 의향 선택'],['want','가보고 싶은 곳'],['again','다시 방문할 곳'],['avoid','다시 방문하지 않을 곳']].forEach(([value,label]) => { const option = document.createElement('option'); option.value = value; option.textContent = label; intent.append(option); }); const save = document.createElement('button'); save.type = 'submit'; save.textContent = '추가'; form.append(intent, save);
         form.addEventListener('submit', async e => {
           e.preventDefault(); save.disabled = true;
           try {
-            await api('/api/places/records', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ placeId: p.id, sido: region.sido, district: region.district }) });
+            await api('/api/places/records', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ placeId: p.id, sido: region.sido, district: region.district, visitIntent: intent.value }) });
             mode = 'mine'; document.querySelector('[data-view="mine"]').click(); dialog.close();
           } catch (error) { searchStatus.textContent = error.message; } finally { save.disabled = false; }
         });
