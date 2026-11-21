@@ -8,7 +8,7 @@ import glob, sqlite3
 c = sqlite3.connect(':memory:')
 files = sorted(glob.glob('migrations/*.sql'))
 for f in files:
- if '0014_' not in f: c.executescript(open(f).read())
+ if '0014_' not in f and '0015_' not in f: c.executescript(open(f).read())
 for i in range(11):
  c.execute('INSERT INTO users(id,email,nickname,password_hash) VALUES(?,?,?,?)',(str(i),f'{i}@example.com',f'user{i}','hash'))
  c.execute("INSERT INTO place_records(user_id,place_id,region_sido,region_district,alias,is_public,created_at,visit_status) VALUES(?, 'biz:1','A','B','',?,1,?)",(str(i),int(i<10), ['want','visited','again',''][i%4]))

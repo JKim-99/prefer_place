@@ -92,7 +92,7 @@ test('personal map uses a scoped stable cursor while public maps disclose their 
   const { onRequestGet } = await import(recordsUrl);
   const rows = Array.from({length:101}, (_,i) => ({place_id:`biz:${i}`,name:`장소 ${i}`,category:'other',tags:'[]',saved_at:1000}));
   const calls = [];
-  const db = { prepare(sql) { return { bind(...args) { calls.push({sql,args}); return { first:async()=>({id:'owner'}),all:async()=>({results:args.length === 6 ? rows.slice(100) : rows}) }; } }; } };
+  const db = { prepare(sql) { return { bind(...args) { calls.push({sql,args}); return { first:async()=>({id:'owner'}),all:async()=>({results:sql.includes('r.created_at < ?') ? rows.slice(100) : rows}) }; } }; } };
   const base = 'https://example.test/api/places/records';
   const headers = {cookie:`place_session=${'a'.repeat(64)}`};
   const mine = await (await onRequestGet({request:new Request(`${base}?mode=mine&sido=A&district=B`,{headers}),env:{DB:db}})).json();

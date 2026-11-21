@@ -110,7 +110,7 @@
       const draft = drafts.get(record.place_id) || { note: record.note || '', visitStatus: record.visit_status || '', visitDate: record.visit_date || '', tags: (record.tags || []).join(', ') };
       noteLabel.textContent = '나만의 메모'; note.maxLength = 1000; note.rows = 3; note.value = draft.note; noteLabel.append(note);
       visitLabel.textContent = '방문 상태';
-      [['', '선택하지 않음'], ['want', '가보고 싶은 곳'], ['again', '다시 방문할 곳'], ['avoid', '다시 방문하지 않을 곳']].forEach(([value, text]) => { const option = document.createElement('option'); option.value = value; option.textContent = text; visit.append(option); });
+      [['want', '가보고 싶은 곳'], ['again', '다시 방문할 곳'], ['avoid', '다시 방문하지 않을 곳']].forEach(([value, text]) => { const option = document.createElement('option'); option.value = value; option.textContent = text; visit.append(option); });
       visit.value = draft.visitStatus; visitLabel.append(visit); save.type = 'submit'; save.textContent = '기록 저장'; message.setAttribute('role', 'status');
       dateLabel.textContent = '방문 날짜 (선택)'; visitDate.type = 'date'; visitDate.min = '1900-01-01'; visitDate.max = '2100-12-31'; visitDate.value = draft.visitDate || ''; dateLabel.append(visitDate);
       tagLabel.textContent = '나만의 태그 (쉼표로 구분, 최대 8개)'; tagInput.type = 'text'; tagInput.maxLength = 167; tagInput.placeholder = '예: 조용함, 작업하기 좋은'; tagInput.value = draft.tags; tagLabel.append(tagInput);

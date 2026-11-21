@@ -32,7 +32,7 @@ export async function onRequestGet({ request, env }) {
   const intent = url.searchParams.get('intent') || 'all';
   if (!['all', 'want', 'again', 'avoid'].includes(intent)) return json({ error: '방문 의향을 확인해 주세요.' }, 400);
   if (mode === 'popular') {
-    const result = await env.DB.prepare(`SELECT p.id AS place_id, p.name, p.address, p.category, p.category_name, p.category_major, p.category_middle, p.category_version, p.longitude, p.latitude, COALESCE(p.source_version, p.data_version) AS data_version, COUNT(DISTINCT r.user_id) AS count FROM place_records r JOIN users u ON u.id = r.user_id AND u.places_public = 1 JOIN public_places p ON p.id = r.place_id WHERE r.region_sido = ? AND r.region_district = ? GROUP BY r.place_id HAVING COUNT(DISTINCT r.user_id) >= 10 AND (? = 'all' OR SUM(CASE WHEN r.visit_intent = ? THEN 1 ELSE 0 END) * 100 >= COUNT(DISTINCT r.user_id) * 30) ORDER BY count DESC, p.id ASC LIMIT 101`).bind(sido, district, intent, intent).all();
+    const result = await env.DB.prepare(`SELECT p.id AS place_id, p.name, p.address, p.category, p.category_name, p.category_major, p.category_middle, p.category_version, p.longitude, p.latitude, COALESCE(p.source_version, p.data_version) AS data_version, COUNT(DISTINCT r.user_id) AS count FROM place_records r JOIN public_places p ON p.id = r.place_id WHERE r.region_sido = ? AND r.region_district = ? GROUP BY r.place_id HAVING COUNT(DISTINCT r.user_id) >= 10 AND (CASE WHEN ? = 'all' THEN COUNT(DISTINCT r.user_id) ELSE COUNT(DISTINCT CASE WHEN r.visit_intent = ? THEN r.user_id END) END) * 100 >= (SELECT COUNT(DISTINCT all_records.user_id) FROM place_records all_records WHERE all_records.region_sido = ? AND all_records.region_district = ?) * 30 ORDER BY count DESC, p.id ASC LIMIT 101`).bind(sido, district, intent, intent, sido, district).all();
     return json({ records: result.results.slice(0, 100).map(withCategory), hasMore: result.results.length > 100 });
   }
   if (mode === 'anonymous' || mode === 'user') {
@@ -94,7 +94,7 @@ export async function onRequestPatch({ request, env }) {
   if (!validId(body.placeId)) return json({ error: '장소를 확인해 주세요.' }, 400);
   let statement;
   if (body.action === 'details') {
-    if (typeof body.note !== 'string' || body.note.length > 1000 || !['', 'want', 'again', 'avoid'].includes(body.visitStatus)) return json({ error: '메모 또는 방문 상태를 확인해 주세요.' }, 400);
+    if (typeof body.note !== 'string' || body.note.length > 1000 || !['want', 'again', 'avoid'].includes(body.visitStatus)) return json({ error: '메모 또는 방문 상태를 확인해 주세요.' }, 400);
     const fields = ['note = ?', 'visit_intent = ?'], values = [body.note, body.visitStatus];
     if (body.tags !== undefined) {
       if (!Array.isArray(body.tags) || body.tags.length > 8 || body.tags.some(tag => typeof tag !== 'string' || !tag.trim() || tag.trim().length > 20 || /[,\u0000-\u001f\u007f]/.test(tag))) return json({ error: '태그는 쉼표 없이 20자 이내로 최대 8개까지 입력해 주세요.' }, 400);

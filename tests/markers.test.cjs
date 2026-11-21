@@ -23,7 +23,8 @@ test('adding a search result gives the marker a stable bounded hit target', asyn
   }
   const ids = new Map();
   const get = id => { if (!ids.has(id)) ids.set(id, new Element()); return ids.get(id); };
-  get('map-visit-filter').value = 'all';
+  const filters = ['all','want','again','avoid'].map(value => { const e = new Element('button'); e.dataset.intent = value; return e; });
+  get('map-visit-filter').querySelectorAll = () => filters;
   const svg = get('region-map'); svg.viewBox = { baseVal: { width: 1, height: 1 } };
   svg.querySelector = selector => selector === '#place-markers' ? svg.children.find(child => child.id === 'place-markers') : null;
   let selected = ['restaurant','cafe','stay','shopping','beauty','medical','culture','education','other'];
@@ -48,6 +49,7 @@ test('adding a search result gives the marker a stable bounded hit target', asyn
   const shapes = [{ geometry: { type: 'Polygon', coordinates: [[[126,37],[128,37],[128,38],[126,38],[126,37]]] } }];
   for (const fn of listeners['place-region-change']) fn({ detail: { sido: '서울', district: '강남', shapes } });
   await new Promise(resolve => setImmediate(resolve));
+  view.click(); await new Promise(resolve => setImmediate(resolve));
   get('place-search-open').click(); await new Promise(resolve => setImmediate(resolve));
   get('place-query').value = '카페'; get('place-search-form').dispatch('submit'); await new Promise(resolve => setImmediate(resolve));
   const result = get('place-search-results').children[0]; assert.ok(result);
@@ -57,7 +59,7 @@ test('adding a search result gives the marker a stable bounded hit target', asyn
   assert.match(position.attrs.transform, /^translate\(/); assert.equal(position.attrs.class, 'place-marker-position'); assert.equal(marker.attrs.class, 'place-marker');
   assert.equal(hit.tag, 'g'); assert.equal(hit.attrs.class, 'place-marker-hit'); assert.equal(hit.attrs.role, 'button');
   assert.equal(hitArea.tag, 'circle'); assert.equal(hitArea.attrs.class, 'place-marker-hit-area');
-  assert.ok(Number(hitArea.attrs.r) > 0 && Number(hitArea.attrs.r) < Number(icon.attrs['font-size']));
+  assert.ok(Number(hitArea.attrs.r) > 0 && Number(hitArea.attrs.r) < Number(icon.attrs.width));
   assert.equal(hitArea.attrs['pointer-events'], undefined);
   assert.equal(icon.attrs.transform, undefined);
   assert.equal(icon.attrs.class, 'marker-icon'); assert.equal(icon.attrs['pointer-events'], 'none');
@@ -73,11 +75,11 @@ test('adding a search result gives the marker a stable bounded hit target', asyn
   assert.equal(get('place-personal-note').textContent, '개인 메모');
   assert.match(get('place-personal-visit').textContent, /2026-10-25/);
   savedRow.children[1].click(); assert.equal(get('saved-places').children.length, 1, 'cancelled deletion preserves the record');
-  get('map-visit-filter').value = 'visited'; get('map-visit-filter').dispatch('change');
+  filters[1].click();
   assert.equal(get('saved-places').children.length, 0, 'visit filter hides records with a different status');
   const emptyLayer = svg.children.find(child => child.id === 'place-markers');
   assert.equal(emptyLayer.children.length, 0, 'visit filter hides matching map markers');
-  get('map-visit-filter').value = 'all'; get('map-visit-filter').dispatch('change');
+  filters[0].click();
   assert.equal(get('saved-places').children.length, 1);
   get('map-tag-filter').value = '산책'; get('map-tag-filter').dispatch('input');
   assert.equal(get('saved-places').children.length, 0, 'tag filter hides nonmatching records');

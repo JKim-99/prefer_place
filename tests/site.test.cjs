@@ -29,7 +29,7 @@ test('map detail styling follows the homepage palette without removing map contr
   assert.match(css, /#region-map #region-overview-selected path\.region-selected\{stroke-width:2px!important\}/);
   const places = readFileSync(resolve(__dirname, '../public/assets/js/places.js'), 'utf8');
   assert.match(places, /position\.setAttribute\('class', 'place-marker-position'\)/);
-  assert.match(places, /hit\.append\(hitArea, text\); marker\.append\(hit\)/);
+  assert.match(places, /hit\.append\(hitArea, symbol\); marker\.append\(hit\)/);
   assert.match(css, /#region-map \.place-marker-hit \.marker-icon\{[^}]*transform:none!important;transition:none!important\}/);
   assert.doesNotMatch(css, /\.place-marker-hit-area\{[^}]*pointer-events:all/);
 });
