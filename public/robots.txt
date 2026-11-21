@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://prefer-place.pages.dev/sitemap.xml
