@@ -63,7 +63,7 @@
   $('close-picker').addEventListener('click', () => dialog.close());
   function showRegion(region) {
     chosen = region; safeStore.set(chosen); renderMap();
-    $('welcome').hidden = true; $('explore').hidden = false;
+    $('welcome').hidden = true; $('explore').hidden = false; $('back-home').hidden = false;
     window.scrollTo(0, 0); $('explore-title').setAttribute('tabindex', '-1');
     $('explore-title').focus({ preventScroll: true });
   }
@@ -78,7 +78,7 @@
     if (target) showRegion(target);
   });
   $('back-home').addEventListener('click', () => {
-    $('explore').hidden = true; $('welcome').hidden = false;
+    $('explore').hidden = true; $('welcome').hidden = false; $('back-home').hidden = true;
     window.scrollTo(0, 0); $('open-picker').focus({ preventScroll: true });
   });
 

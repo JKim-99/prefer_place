@@ -6,9 +6,9 @@ const vm = require('node:vm');
 
 test('adding a search result gives the marker a stable bounded hit target', async () => {
   class Element {
-    constructor(tag = 'div') { this.tag = tag; this.children = []; this.listeners = {}; this.attrs = {}; this.value = ''; this.dataset = {}; this.hidden = false; this.classList = { toggle() {} }; }
+    constructor(tag = 'div') { this.tag = tag; this.children = []; this.listeners = {}; this.attrs = {}; this.value = ''; this.dataset = {}; this.hidden = false; this.style = {}; this.classList = { toggle() {} }; }
     addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); }
-    dispatch(type, extra = {}) { for (const fn of this.listeners[type] || []) fn({ target: this, currentTarget: this, preventDefault() {}, ...extra }); }
+    dispatch(type, extra = {}) { for (const fn of this.listeners[type] || []) fn({ target: this, currentTarget: this, preventDefault() {}, stopPropagation() {}, stopImmediatePropagation() {}, ...extra }); }
     click() { this.dispatch('click'); }
     append(...children) { children.forEach(child => { child.parent = this; }); this.children.push(...children); }
     contains(node) { return this === node || this.children.some(child => child.contains?.(node)); }
@@ -17,18 +17,19 @@ test('adding a search result gives the marker a stable bounded hit target', asyn
     setAttribute(key, value) { this.attrs[key] = String(value); }
     querySelector(selector) { if (selector === '#place-markers') return this.children.find(child => child.id === 'place-markers'); return null; }
     querySelectorAll() { return []; }
+    getBoundingClientRect() { return {left:10,right:30,top:10,bottom:30,x:10,y:10,width:20,height:20}; }
     focus() { this.focused = true; }
     showModal() { this.open = true; }
     close() { this.open = false; this.dispatch('close'); }
   }
   const ids = new Map();
   const get = id => { if (!ids.has(id)) ids.set(id, new Element()); return ids.get(id); };
-  const filters = ['all','want','again','avoid'].map(value => { const e = new Element('button'); e.dataset.intent = value; return e; });
+  const filters = ['again','want','avoid'].map(value => { const e = new Element('button'); e.dataset.intent = value; return e; });
   get('map-visit-filter').querySelectorAll = () => filters;
   const svg = get('region-map'); svg.viewBox = { baseVal: { width: 1, height: 1 } };
   svg.querySelector = selector => selector === '#place-markers' ? svg.children.find(child => child.id === 'place-markers') : null;
   let selected = ['restaurant','cafe','stay','shopping','beauty','medical','culture','education','other'];
-  const legend = new Element(); legend.querySelectorAll = () => selected.map(value => ({ value }));
+  const all = { value:'all', checked:true }; const legend = new Element(); legend.querySelector = () => all; legend.querySelectorAll = selector => selected.map(value => ({ value, checked:true }));
   const view = new Element(); view.dataset.view = 'mine';
   const popular = new Element(); popular.dataset.view = 'popular';
   const listeners = {};
@@ -59,15 +60,16 @@ test('adding a search result gives the marker a stable bounded hit target', asyn
   assert.match(position.attrs.transform, /^translate\(/); assert.equal(position.attrs.class, 'place-marker-position'); assert.equal(marker.attrs.class, 'place-marker');
   assert.equal(hit.tag, 'g'); assert.equal(hit.attrs.class, 'place-marker-hit'); assert.equal(hit.attrs.role, 'button');
   assert.equal(hitArea.tag, 'circle'); assert.equal(hitArea.attrs.class, 'place-marker-hit-area');
-  assert.ok(Number(hitArea.attrs.r) > 0 && Number(hitArea.attrs.r) < Number(icon.attrs.width));
-  assert.equal(hitArea.attrs['pointer-events'], undefined);
-  assert.equal(icon.attrs.transform, undefined);
-  assert.equal(icon.attrs.class, 'marker-icon'); assert.equal(icon.attrs['pointer-events'], 'none');
-  assert.equal(marker.attrs.role, undefined); assert.equal(marker.attrs.tabindex, undefined); assert.equal(hitArea.attrs.fill, '#000');
-  assert.equal(hit.contains(icon), true);
-  hit.dispatch('pointerleave', { relatedTarget: icon });
-  assert.equal(hit.contains(icon), true);
-  assert.equal(marker.attrs.transform, undefined); assert.equal(position.attrs['pointer-events'], undefined);
+  assert.ok(Number(hitArea.attrs.r) > 0);
+  assert.match(icon.attrs.transform, /^scale\(/); assert.equal(icon.attrs['pointer-events'], 'none');
+  assert.equal(icon.children[0].tag, 'path'); assert.equal(icon.children[0].attrs.fill, '#285ac1');
+  assert.equal(marker.attrs.role, undefined); assert.equal(marker.attrs.tabindex, undefined);
+  svg.dispatch('pointermove', {clientX:100,clientY:100,buttons:0});
+  assert.equal(get('marker-tooltip').hidden, true, 'blank map does not show a tooltip');
+  svg.dispatch('click', {clientX:100,clientY:100}); assert.equal(get('place-detail').hidden, true, 'blank map does not open a detail');
+  svg.dispatch('pointermove', {clientX:20,clientY:20,buttons:0});
+  assert.equal(get('marker-tooltip').hidden, false, 'pointer over marker shows tooltip');
+  svg.dispatch('click', {clientX:20,clientY:20}); assert.equal(get('place-detail').hidden, false, 'marker opens its detail');
   const savedRow = get('saved-places').children[0];
   assert.equal(savedRow.children[0].tag, 'button');
   savedRow.children[0].click(); assert.equal(get('place-detail').hidden, false);
@@ -91,7 +93,7 @@ test('adding a search result gives the marker a stable bounded hit target', asyn
   assert.equal(get('place-personal-details').hidden, true, 'public modes do not show personal details');
   assert.equal(get('place-personal-note').textContent, '');
   view.click(); await new Promise(resolve => setImmediate(resolve));
-  selected = ['restaurant']; legend.dispatch('change');
+  selected = ['restaurant']; legend.dispatch('change', {target:{value:'restaurant'}});
   assert.equal(get('saved-places').children.length, 0, 'list follows the category filter');
   failRecords = true; view.click(); await new Promise(resolve => setImmediate(resolve));
   assert.equal(svg.children.some(child => child.id === 'place-markers'), false, 'failed view reload cannot retain old private markers');

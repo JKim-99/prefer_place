@@ -5,12 +5,13 @@
   const legend = document.querySelector('.place-legend');
   let selectedUser = null, region = null, mode = 'popular', live = [], records = [], generation = 0, hasMore = false, nextCursor = null, loadingMore = false;
   const moreButton = $('load-more-places');
+  let markerTargets = [], hoveredMarker = null;
   const icons = { restaurant: '🍴', cafe: '☕', stay: '🛏', shopping: '🛍', beauty: '💇', medical: '⚕️', culture: '🎭', education: '📚', other: '📍' };
   const category = code => ({ FD6: 'restaurant', CE7: 'cafe', AD5: 'stay', restaurant: 'restaurant', cafe: 'cafe', stay: 'stay', shopping: 'shopping', beauty: 'beauty', medical: 'medical', culture: 'culture', education: 'education', other: 'other' }[code] || 'other');
-  const selectedCategories = () => new Set([...legend.querySelectorAll('input:checked')].map(i => i.value));
+  const selectedCategories = () => new Set([...legend.querySelectorAll('input:checked:not([value=all])')].map(i => i.value));
   const visitLabels = { want:'가보고 싶은 곳', again:'다시 방문할 곳', avoid:'다시 방문하지 않을 곳' };
   const visitFilter = $('map-visit-filter'), tagFilter = $('map-tag-filter');
-  let visitIntent = 'all';
+  let visitIntent = 'again';
   function setVisitIntent(value) { visitIntent = value; visitFilter.querySelectorAll('[data-intent]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.intent === value))); }
   const matchesPersonalFilters = (visitStatus, tags) => {
     if (mode !== 'mine') return true;
@@ -48,7 +49,7 @@
   }
   $('place-detail-close').addEventListener('click', hideInfo);
   function renderMarkers() {
-    svg.querySelector('#place-markers')?.remove(); hideInfo();
+    svg.querySelector('#place-markers')?.remove(); markerTargets = []; hoveredMarker = null; hideInfo();
     if (!region || !live.length) return;
     const vb = svg.viewBox.baseVal, size = Math.max(vb.width, vb.height) * .045;
     const group = document.createElementNS('http://www.w3.org/2000/svg', 'g'); group.id = 'place-markers';
@@ -63,26 +64,32 @@
       const hitArea = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       hitArea.setAttribute('class', 'place-marker-hit-area'); hitArea.setAttribute('cx', '0'); hitArea.setAttribute('cy', '0'); hitArea.setAttribute('r', String(size * .55));
       hitArea.setAttribute('fill', '#000'); hitArea.setAttribute('fill-opacity', '0');
-      const symbol = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      symbol.setAttribute('class', 'marker-icon'); symbol.setAttribute('x', String(-size * .5)); symbol.setAttribute('y', String(-size * .65)); symbol.setAttribute('width', String(size)); symbol.setAttribute('height', String(size * 1.3)); symbol.setAttribute('viewBox', '0 0 32 42'); symbol.setAttribute('pointer-events', 'none');
-      const pin = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      pin.setAttribute('d', 'M16 1C7.7 1 1 7.7 1 16c0 10.5 15 25 15 25s15-14.5 15-25C31 7.7 24.3 1 16 1Z');
-      const colors = { restaurant:'#bd513d', cafe:'#95603b', stay:'#5b69a5', shopping:'#a55883', beauty:'#a75a6e', medical:'#b24750', culture:'#6d5c9c', education:'#337d80', other:'#446b79' };
-      pin.setAttribute('fill', colors[category(p.category)]); pin.setAttribute('stroke', '#fff'); pin.setAttribute('stroke-width', '2');
-      const glyph = document.createElementNS('http://www.w3.org/2000/svg', 'text'); glyph.setAttribute('x','16'); glyph.setAttribute('y','20'); glyph.setAttribute('text-anchor','middle'); glyph.setAttribute('fill','#fff'); glyph.setAttribute('font-size','12'); glyph.setAttribute('font-weight','700');
-      glyph.textContent = { restaurant:'식', cafe:'카', stay:'숙', shopping:'쇼', beauty:'미', medical:'의', culture:'문', education:'교', other:'기' }[category(p.category)];
-      symbol.append(pin, glyph); hit.append(hitArea, symbol); marker.append(hit);
-      hit.addEventListener('pointerenter', () => showTooltip(hit, p)); hit.addEventListener('pointerleave', event => {
-        const related = event.relatedTarget;
-        if (related && (hit.contains(related) || related.closest?.('.place-marker-hit') === hit)) return;
-        tooltip.hidden = true;
-      });
+      const symbol = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      symbol.setAttribute('transform', `scale(${size / 32})`); symbol.setAttribute('pointer-events', 'none');
+      const pin = document.createElementNS('http://www.w3.org/2000/svg', 'path'); pin.setAttribute('class', 'marker-icon');
+      pin.setAttribute('d', 'M0 -15C-8.3 -15 -15 -8.3 -15 0c0 10.5 15 25 15 25S15 10.5 15 0C15 -8.3 8.3 -15 0 -15Z'); pin.setAttribute('fill', '#285ac1'); pin.setAttribute('pointer-events', 'none'); symbol.append(pin);
+      hit.append(hitArea, symbol); marker.append(hit);
       hit.addEventListener('focus', () => showTooltip(hit, p)); hit.addEventListener('blur', () => { tooltip.hidden = true; });
-      hit.addEventListener('click', () => showDetail(p)); hit.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); showDetail(p); } });
+      hit.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); showDetail(p); } });
+      markerTargets.push({ hit, hitArea, place: p });
       position.append(marker); group.append(position);
     });
     svg.append(group);
   }
+  function markerAtPoint(event) {
+    return markerTargets.find(({ hitArea }) => {
+      const bounds = hitArea.getBoundingClientRect(), x = event.clientX, y = event.clientY;
+      return x >= bounds.left && x <= bounds.right && y >= bounds.top && y <= bounds.bottom;
+    });
+  }
+  svg.addEventListener('pointermove', event => {
+    if (event.buttons) { tooltip.hidden = true; hoveredMarker = null; return; }
+    const target = markerAtPoint(event);
+    hoveredMarker = target; if (target) showTooltip(target.hit, target.place); else tooltip.hidden = true;
+  });
+  svg.addEventListener('pointerleave', () => { hoveredMarker = null; tooltip.hidden = true; });
+  svg.addEventListener('pointerdown', event => { if (markerAtPoint(event)) event.stopImmediatePropagation(); }, true);
+  svg.addEventListener('click', event => { const target = markerAtPoint(event); if (target) { event.stopPropagation(); showDetail(target.place); } });
   async function api(url, options) {
     const requestUser = window.placeCurrentUser;
     const response = await fetch(url, options); let data;
@@ -135,16 +142,38 @@
     } catch (error) { if (version !== generation) return; if (!append) { records = []; live = []; hasMore = false; nextCursor = null; $('saved-places').replaceChildren(); renderMarkers(); } status.textContent = append ? `장소를 더 불러오지 못했어요. ${error.message}` : error.message; }
     finally { if (version === generation) { loadingMore = false; moreButton.disabled = false; moreButton.hidden = mode !== 'mine' || !nextCursor; } }
   }
-  document.addEventListener('place-auth-change', event => { if (!event.detail.signedIn) { live = []; records = []; hasMore = false; nextCursor = null; moreButton.hidden = true; setVisitIntent('all'); tagFilter.value = ''; if (mode === 'mine') { mode = 'popular'; document.querySelectorAll('.place-view').forEach(button => { const active = button.dataset.view === mode; button.classList.toggle('is-active', active); button.setAttribute('aria-pressed', String(active)); }); } $('saved-places').replaceChildren(); renderMarkers(); } updatePersonalFilters(); if (region) loadRecords(); });
-  document.addEventListener('place-region-change', event => { selectedUser = null; mode = 'popular'; setVisitIntent('all'); document.querySelectorAll('.place-view').forEach(button => { const active = button.dataset.view === mode; button.classList.toggle('is-active', active); button.setAttribute('aria-pressed', String(active)); }); updatePersonalFilters(); region = event.detail; live = []; records = []; hasMore = false; nextCursor = null; moreButton.hidden = true; $('saved-places').replaceChildren(); status.textContent = '불러오는 중...'; loadRecords(); });
+  document.addEventListener('place-auth-change', event => { if (!event.detail.signedIn) { live = []; records = []; hasMore = false; nextCursor = null; moreButton.hidden = true; setVisitIntent('again'); tagFilter.value = ''; if (mode === 'mine') { mode = 'popular'; document.querySelectorAll('.place-view').forEach(button => { const active = button.dataset.view === mode; button.classList.toggle('is-active', active); button.setAttribute('aria-pressed', String(active)); }); } $('saved-places').replaceChildren(); renderMarkers(); } updatePersonalFilters(); if (region) loadRecords(); });
+  document.addEventListener('place-region-change', event => { selectedUser = null; mode = 'popular'; setVisitIntent('again'); document.querySelectorAll('.place-view').forEach(button => { const active = button.dataset.view === mode; button.classList.toggle('is-active', active); button.setAttribute('aria-pressed', String(active)); }); updatePersonalFilters(); region = event.detail; live = []; records = []; hasMore = false; nextCursor = null; moreButton.hidden = true; $('saved-places').replaceChildren(); status.textContent = '불러오는 중...'; loadRecords(); });
   document.addEventListener('place-records-change', () => { if (region) loadRecords(); });
-  legend.addEventListener('change', () => { renderMarkers(); renderRecords(); });
+  legend.addEventListener('change', event => {
+    const all = legend.querySelector('input[value="all"]');
+    const items = [...legend.querySelectorAll('input:not([value="all"])')];
+    if (event.target === all) items.forEach(input => { input.checked = all.checked; });
+    const count = items.filter(input => input.checked).length;
+    all.checked = count === items.length; all.indeterminate = count > 0 && count < items.length;
+    renderMarkers(); renderRecords();
+  });
   visitFilter.querySelectorAll('[data-intent]').forEach(button => button.addEventListener('click', () => { setVisitIntent(button.dataset.intent); if (mode === 'mine') { renderMarkers(); renderRecords(); } else loadRecords(); }));
   tagFilter.addEventListener('input', () => { renderMarkers(); renderRecords(); });
   moreButton.addEventListener('click', () => loadRecords({ append: true }));
+  document.querySelectorAll('.view-tip').forEach(wrapper => {
+    const button = wrapper.querySelector('.place-view'); let suppressClick = false;
+    wrapper.addEventListener('pointerenter', event => { if (event.pointerType === 'mouse') wrapper.classList.remove('tip-dismissed'); });
+    button.addEventListener('pointerdown', event => {
+      if (event.pointerType === 'touch' && !wrapper.classList.contains('tip-touch-visible')) {
+        document.querySelectorAll('.view-tip').forEach(item => item.classList.remove('tip-touch-visible'));
+        wrapper.classList.remove('tip-dismissed'); wrapper.classList.add('tip-touch-visible'); suppressClick = true;
+      } else { wrapper.classList.remove('tip-touch-visible'); wrapper.classList.add('tip-dismissed'); suppressClick = false; }
+    });
+    button.addEventListener('click', event => { if (suppressClick) { suppressClick = false; event.stopImmediatePropagation(); } });
+    button.addEventListener('keydown', event => { if (event.key === 'Escape') { wrapper.classList.remove('tip-touch-visible'); wrapper.classList.add('tip-dismissed'); } else if (event.key === 'Tab') wrapper.classList.remove('tip-dismissed'); });
+    button.addEventListener('focus', () => { if (button.matches(':focus-visible') && !suppressClick) wrapper.classList.remove('tip-dismissed'); });
+    button.addEventListener('blur', () => { wrapper.classList.remove('tip-dismissed'); wrapper.classList.remove('tip-touch-visible'); });
+  });
+  document.addEventListener('pointerdown', event => { if (!event.target.closest('.view-tip')) document.querySelectorAll('.view-tip').forEach(item => item.classList.remove('tip-touch-visible')); });
   document.querySelectorAll('.place-view').forEach(button => button.addEventListener('click', () => {
     if (button.dataset.view === 'mine' && !window.placeCurrentUser) { $('auth-open').click(); return; }
-    mode = button.dataset.view; selectedUser = null; setVisitIntent('all');
+    mode = button.dataset.view; selectedUser = null; setVisitIntent('again');
     updatePersonalFilters();
     live = []; records = []; hasMore = false; nextCursor = null; moreButton.hidden = true; $('saved-places').replaceChildren(); renderMarkers(); status.textContent = '불러오는 중...';
     document.querySelectorAll('.place-view').forEach(item => { const active = item === button; item.classList.toggle('is-active', active); item.setAttribute('aria-pressed', String(active)); });
