@@ -69,6 +69,14 @@
       symbol.setAttribute('transform', `scale(${size / 32})`); symbol.setAttribute('pointer-events', 'none');
       const pin = document.createElementNS('http://www.w3.org/2000/svg', 'path'); pin.setAttribute('class', 'marker-icon');
       pin.setAttribute('d', 'M0 -15C-8.3 -15 -15 -8.3 -15 0c0 10.5 15 25 15 25S15 10.5 15 0C15 -8.3 8.3 -15 0 -15Z'); pin.setAttribute('fill', '#285ac1'); pin.setAttribute('pointer-events', 'none'); symbol.append(pin);
+      const center = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      center.setAttribute('class', 'marker-center'); center.setAttribute('cx', '0'); center.setAttribute('cy', '0'); center.setAttribute('r', '11'); center.setAttribute('fill', '#fff'); symbol.append(center);
+      const source = legend.querySelector(`input[value="${category(p.category)}"]`)?.parentElement?.querySelector('svg.legend-icon');
+      if (source) {
+        const categoryIcon = source.cloneNode(true);
+        categoryIcon.setAttribute('class', 'marker-category-icon'); categoryIcon.setAttribute('x', '-8'); categoryIcon.setAttribute('y', '-8'); categoryIcon.setAttribute('width', '16'); categoryIcon.setAttribute('height', '16'); categoryIcon.setAttribute('stroke', '#285ac1');
+        symbol.append(categoryIcon);
+      }
       hit.append(hitArea, symbol); marker.append(hit);
       hit.addEventListener('focus', () => showTooltip(hit, p)); hit.addEventListener('blur', () => { tooltip.hidden = true; });
       hit.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); showDetail(p); } });

@@ -15,6 +15,7 @@ test('adding a search result gives the marker a stable bounded hit target', asyn
     replaceChildren(...children) { this.children = children; }
     remove() { if (this.parent) this.parent.children = this.parent.children.filter(item => item !== this); }
     setAttribute(key, value) { this.attrs[key] = String(value); }
+    cloneNode() { const copy = new Element(this.tag); copy.attrs = { ...this.attrs }; return copy; }
     querySelector(selector) { if (selector === '#place-markers') return this.children.find(child => child.id === 'place-markers'); return null; }
     querySelectorAll() { return []; }
     getBoundingClientRect() { return {left:10,right:30,top:10,bottom:30,x:10,y:10,width:20,height:20}; }
@@ -29,7 +30,14 @@ test('adding a search result gives the marker a stable bounded hit target', asyn
   const svg = get('region-map'); svg.viewBox = { baseVal: { width: 1, height: 1 } };
   svg.querySelector = selector => selector === '#place-markers' ? svg.children.find(child => child.id === 'place-markers') : null;
   let selected = ['restaurant','cafe','stay','shopping','beauty','medical','culture','education','other'];
-  const all = { value:'all', checked:true }; const legend = new Element(); legend.querySelector = () => all; legend.querySelectorAll = selector => selected.map(value => ({ value, checked:true }));
+  const all = { value:'all', checked:true }; const legend = new Element();
+  const legendIcons = new Map(selected.map(value => { const icon = new Element('svg'); icon.attrs['data-category'] = value; return [value, icon]; }));
+  legend.querySelector = selector => {
+    const match = selector.match(/^input\[value="([a-z]+)"\]$/);
+    if (match && match[1] !== 'all') return { parentElement: { querySelector: () => legendIcons.get(match[1]) } };
+    return all;
+  };
+  legend.querySelectorAll = selector => selected.map(value => ({ value, checked:true }));
   const view = new Element(); view.dataset.view = 'mine';
   const popular = new Element(); popular.dataset.view = 'popular';
   const listeners = {};
@@ -64,6 +72,10 @@ test('adding a search result gives the marker a stable bounded hit target', asyn
   assert.ok(Number(hitArea.attrs.r) > 0);
   assert.match(icon.attrs.transform, /^scale\(/); assert.equal(icon.attrs['pointer-events'], 'none');
   assert.equal(icon.children[0].tag, 'path'); assert.equal(icon.children[0].attrs.fill, '#285ac1');
+  assert.equal(icon.children[1].tag, 'circle'); assert.equal(icon.children[1].attrs.class, 'marker-center');
+  assert.equal(icon.children[2].tag, 'svg'); assert.equal(icon.children[2].attrs.class, 'marker-category-icon');
+  assert.equal(icon.children[2].attrs['data-category'], 'cafe', 'marker reuses the matching legend icon');
+  assert.notEqual(icon.children[2], legendIcons.get('cafe'), 'legend icon remains in the legend');
   assert.equal(marker.attrs.role, undefined); assert.equal(marker.attrs.tabindex, undefined);
   svg.dispatch('pointermove', {clientX:100,clientY:100,buttons:0});
   assert.equal(get('marker-tooltip').hidden, true, 'blank map does not show a tooltip');
