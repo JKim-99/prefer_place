@@ -4,6 +4,7 @@
   const dialog = $('place-dialog'), searchStatus = $('place-search-status'), results = $('place-search-results');
   const legend = document.querySelector('.place-legend');
   let selectedUser = null, region = null, mode = 'popular', live = [], records = [], generation = 0, hasMore = false, nextCursor = null, loadingMore = false;
+  let awaitingInitialAuth = false;
   const moreButton = $('load-more-places');
   let markerTargets = [], hoveredMarker = null;
   const icons = { restaurant: '🍴', cafe: '☕', stay: '🛏', shopping: '🛍', beauty: '💇', medical: '⚕️', culture: '🎭', education: '📚', other: '📍' };
@@ -142,8 +143,8 @@
     } catch (error) { if (version !== generation) return; if (!append) { records = []; live = []; hasMore = false; nextCursor = null; $('saved-places').replaceChildren(); renderMarkers(); } status.textContent = append ? `장소를 더 불러오지 못했어요. ${error.message}` : error.message; }
     finally { if (version === generation) { loadingMore = false; moreButton.disabled = false; moreButton.hidden = mode !== 'mine' || !nextCursor; } }
   }
-  document.addEventListener('place-auth-change', event => { if (!event.detail.signedIn) { live = []; records = []; hasMore = false; nextCursor = null; moreButton.hidden = true; setVisitIntent('again'); tagFilter.value = ''; if (mode === 'mine') { mode = 'popular'; document.querySelectorAll('.place-view').forEach(button => { const active = button.dataset.view === mode; button.classList.toggle('is-active', active); button.setAttribute('aria-pressed', String(active)); }); } $('saved-places').replaceChildren(); renderMarkers(); } updatePersonalFilters(); if (region) loadRecords(); });
-  document.addEventListener('place-region-change', event => { selectedUser = null; mode = 'popular'; setVisitIntent('again'); document.querySelectorAll('.place-view').forEach(button => { const active = button.dataset.view === mode; button.classList.toggle('is-active', active); button.setAttribute('aria-pressed', String(active)); }); updatePersonalFilters(); region = event.detail; live = []; records = []; hasMore = false; nextCursor = null; moreButton.hidden = true; $('saved-places').replaceChildren(); status.textContent = '불러오는 중...'; loadRecords(); });
+  document.addEventListener('place-auth-change', event => { if (awaitingInitialAuth) { awaitingInitialAuth = false; mode = event.detail.signedIn ? 'mine' : 'popular'; document.querySelectorAll('.place-view').forEach(button => { const active = button.dataset.view === mode; button.classList.toggle('is-active', active); button.setAttribute('aria-pressed', String(active)); }); } if (!event.detail.signedIn) { live = []; records = []; hasMore = false; nextCursor = null; moreButton.hidden = true; setVisitIntent('again'); tagFilter.value = ''; if (mode === 'mine') { mode = 'popular'; document.querySelectorAll('.place-view').forEach(button => { const active = button.dataset.view === mode; button.classList.toggle('is-active', active); button.setAttribute('aria-pressed', String(active)); }); } $('saved-places').replaceChildren(); renderMarkers(); } updatePersonalFilters(); if (region) loadRecords(); });
+  document.addEventListener('place-region-change', event => { selectedUser = null; awaitingInitialAuth = window.placeAuthReady === false; mode = window.placeCurrentUser ? 'mine' : 'popular'; setVisitIntent('again'); document.querySelectorAll('.place-view').forEach(button => { const active = button.dataset.view === mode; button.classList.toggle('is-active', active); button.setAttribute('aria-pressed', String(active)); }); updatePersonalFilters(); region = event.detail; live = []; records = []; hasMore = false; nextCursor = null; moreButton.hidden = true; $('saved-places').replaceChildren(); status.textContent = '불러오는 중...'; loadRecords(); });
   document.addEventListener('place-records-change', () => { if (region) loadRecords(); });
   legend.addEventListener('change', event => {
     const all = legend.querySelector('input[value="all"]');
@@ -173,6 +174,7 @@
   document.addEventListener('pointerdown', event => { if (!event.target.closest('.view-tip')) document.querySelectorAll('.view-tip').forEach(item => item.classList.remove('tip-touch-visible')); });
   document.querySelectorAll('.place-view').forEach(button => button.addEventListener('click', () => {
     if (button.dataset.view === 'mine' && !window.placeCurrentUser) { $('auth-open').click(); return; }
+    awaitingInitialAuth = false;
     mode = button.dataset.view; selectedUser = null; setVisitIntent('again');
     updatePersonalFilters();
     live = []; records = []; hasMore = false; nextCursor = null; moreButton.hidden = true; $('saved-places').replaceChildren(); renderMarkers(); status.textContent = '불러오는 중...';

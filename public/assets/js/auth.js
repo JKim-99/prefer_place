@@ -3,6 +3,7 @@
   const $ = id => document.getElementById(id);
   const dialog = $('auth-dialog'), form = $('auth-form'), error = $('auth-error');
   let signup = false, authEpoch = 0;
+  window.placeAuthReady = false;
   const checkVersions = { username: 0, nickname: 0 };
   function fieldError(field, duplicate) {
     const input = $(`auth-${field}`), hint = $(`auth-${field}-error`);
@@ -45,6 +46,7 @@
   function showUser(user) {
     authEpoch++;
     window.placeCurrentUser = user;
+    window.placeAuthReady = true;
     if ($('auth-open')) $('auth-open').hidden = !!user;
     if ($('auth-logout')) $('auth-logout').hidden = !user;
     if ($('auth-user')) {

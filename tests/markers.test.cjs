@@ -50,6 +50,7 @@ test('adding a search result gives the marker a stable bounded hit target', asyn
   const shapes = [{ geometry: { type: 'Polygon', coordinates: [[[126,37],[128,37],[128,38],[126,38],[126,37]]] } }];
   for (const fn of listeners['place-region-change']) fn({ detail: { sido: '서울', district: '강남', shapes } });
   await new Promise(resolve => setImmediate(resolve));
+  assert.equal(view.attrs['aria-pressed'], 'true', 'signed-in region entry defaults to my map');
   view.click(); await new Promise(resolve => setImmediate(resolve));
   get('place-search-open').click(); await new Promise(resolve => setImmediate(resolve));
   get('place-query').value = '카페'; get('place-search-form').dispatch('submit'); await new Promise(resolve => setImmediate(resolve));

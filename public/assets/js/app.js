@@ -20,6 +20,46 @@
     get() { try { return JSON.parse(localStorage.getItem('prefer-place-region')); } catch (_) { return null; } },
     set(value) { try { localStorage.setItem('prefer-place-region', JSON.stringify(value)); } catch (_) { /* storage is optional */ } }
   };
+  const recentKey = 'prefer-place-recent-regions';
+  let recentRegions = [];
+  function validRegion(region) {
+    return region && typeof region.sido === 'string' && typeof region.district === 'string' &&
+      features.some(feature => feature.properties.sidonm === region.sido && cityName(feature.properties.sggnm) === region.district);
+  }
+  function readRecentRegions() {
+    try {
+      const stored = JSON.parse(localStorage.getItem(recentKey));
+      if (!Array.isArray(stored)) return [];
+      const seen = new Set();
+      return stored.filter(region => {
+        if (!validRegion(region)) return false;
+        const key = JSON.stringify([region.sido, region.district]);
+        if (seen.has(key)) return false;
+        seen.add(key); return true;
+      }).slice(0, 5).map(({ sido, district }) => ({ sido, district }));
+    } catch (_) { return []; }
+  }
+  function saveRecentRegions() {
+    try { localStorage.setItem(recentKey, JSON.stringify(recentRegions)); } catch (_) { /* storage is optional */ }
+  }
+  function renderRecentRegions() {
+    const section = $('recent-regions'), list = $('recent-regions-list');
+    list.replaceChildren(); section.hidden = recentRegions.length === 0;
+    recentRegions.forEach(region => {
+      const item = document.createElement('li');
+      const open = document.createElement('button'); open.type = 'button'; open.className = 'recent-region-open';
+      open.textContent = `${region.sido} ${region.district}`;
+      open.addEventListener('click', () => showRegion(region));
+      const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'recent-region-remove';
+      remove.textContent = '삭제'; remove.setAttribute('aria-label', `${region.sido} ${region.district} 방문 기록 삭제`);
+      remove.addEventListener('click', () => {
+        recentRegions = recentRegions.filter(entry => entry.sido !== region.sido || entry.district !== region.district);
+        saveRecentRegions(); renderRecentRegions();
+        const next = list.querySelector('button'); (next || $('featured-link')).focus();
+      });
+      item.append(open, remove); list.append(item);
+    });
+  }
   function button(label, active, onClick) {
     const el = document.createElement('button');
     el.type = 'button'; el.textContent = label; el.className = active ? 'is-selected' : '';
@@ -62,6 +102,9 @@
   $('change-location').addEventListener('click', openPicker);
   $('close-picker').addEventListener('click', () => dialog.close());
   function showRegion(region) {
+    if (!validRegion(region)) return;
+    recentRegions = [region, ...recentRegions.filter(entry => entry.sido !== region.sido || entry.district !== region.district)].slice(0, 5);
+    saveRecentRegions(); renderRecentRegions();
     chosen = region; safeStore.set(chosen); renderMap();
     $('welcome').hidden = true; $('explore').hidden = false; $('back-home').hidden = false;
     window.scrollTo(0, 0); $('explore-title').setAttribute('tabindex', '-1');
@@ -267,6 +310,7 @@
   Promise.all(['assets/data/sigungu.geojson', 'assets/data/emd.geojson'].map(url => fetch(url).then(response => { if (!response.ok) throw new Error('data'); return response.json(); }))).then(([data, dongData]) => {
     features = data.features.filter((f) => f.properties?.sidonm && f.properties?.sggnm && f.geometry);
     neighborhoods = dongData.features.filter(f => f.properties?.dong && f.geometry);
+    recentRegions = readRecentRegions(); renderRecentRegions();
     $('open-picker').disabled = false; $('change-location').disabled = false;
     const regionMap = new Map();
     features.forEach((f) => {
@@ -303,6 +347,6 @@
     }
     changeFeatured();
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches) setInterval(changeFeatured, 3000);
-    chosen = safeStore.get(); if (chosen) renderMap();
+    chosen = safeStore.get(); if (validRegion(chosen)) renderMap(); else chosen = null;
   }).catch(() => { $('map-error').hidden = false; $('map-error').textContent = '지역 데이터를 불러오지 못했어요. 페이지를 새로고침해 주세요.'; $('open-picker').disabled = true; $('change-location').disabled = true; });
 })();

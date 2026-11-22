@@ -8,23 +8,24 @@
   <meta name="description" content="좋아하는 장소와 그 이유를 모으는 나만의 취향 지도">
   <meta name="theme-color" content="#f4f0e7">
   <title>취향지도 — 좋아하는 장소를 모으는 지도</title>
-  <link rel="stylesheet" href="assets/css/styles.css?v=47">
-  <script src="assets/js/app.js?v=21" defer></script>
-  <script src="assets/js/auth.js?v=11" defer></script>
+  <link rel="stylesheet" href="assets/css/styles.css?v=48">
+  <script src="assets/js/app.js?v=22" defer></script>
+  <script src="assets/js/auth.js?v=12" defer></script>
   <script src="assets/js/catalog.js?v=2" defer></script>
-  <script src="assets/js/places.js?v=31" defer></script>
+  <script src="assets/js/places.js?v=32" defer></script>
   <script src="assets/js/mypage.js?v=22" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">본문 바로가기</a>
   <header class="site-header">
+    <span class="site-title">취향지도</span>
     <button class="back-button" id="back-home" type="button" hidden>지금 어디에 있나요?</button>
     <div class="auth-header"><a id="auth-user" class="auth-header-button" href="/mypage.html" hidden></a><button id="auth-open" class="auth-header-button" type="button">로그인</button><button id="auth-logout" class="auth-header-button" type="button" hidden>로그아웃</button></div>
   </header>
   <main id="main">
     <section class="hero wrap" id="welcome">
       <div class="hero-copy">
-        <div class="location-scene"><svg class="featured-map" id="featured-map" aria-hidden="true"></svg><div class="location-actions"><button class="location-button" id="open-picker" type="button">지금 어디에 있나요?</button><button class="featured-link" id="featured-link" type="button" disabled><span class="featured-dial" id="featured-dial">지역을 불러오는 중</span></button></div></div>
+        <div class="location-scene"><svg class="featured-map" id="featured-map" aria-hidden="true"></svg><div class="location-actions"><button class="location-button" id="open-picker" type="button">지금 어디에 있나요?</button><button class="featured-link" id="featured-link" type="button" disabled><span class="featured-dial" id="featured-dial">지역을 불러오는 중</span></button><section class="recent-regions" id="recent-regions" aria-labelledby="recent-regions-title" hidden><h2 id="recent-regions-title">최근 방문 지역</h2><ul id="recent-regions-list"></ul></section></div></div>
       </div>
     </section>
     <section class="explore" id="explore" aria-labelledby="explore-title" hidden>

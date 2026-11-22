@@ -11,6 +11,13 @@ test('homepage provides a manual region picker and a map', () => {
   assert.doesNotMatch(html, /navigator\.geolocation/);
 });
 
+test('homepage includes recent-region history and the large site title', () => {
+  assert.match(html, /class="site-title">취향지도/);
+  assert.match(html, /id="recent-regions"/);
+  assert.match(readFileSync(resolve(root, 'public/assets/js/app.js'), 'utf8'), /prefer-place-recent-regions/);
+  assert.match(readFileSync(resolve(root, 'public/assets/js/app.js'), 'utf8'), /recent-region-remove/);
+});
+
 test('map detail styling follows the homepage palette without removing map controls', () => {
   const css = readFileSync(resolve(__dirname, '../public/assets/css/styles.css'), 'utf8');
   for (const expected of ['#region-map .region-other', '#region-map .region-side', '#region-map .region-selected', '#region-map .neighborhood-border', '#region-map #neighborhood-labels text', '#region-map .place-marker-position{pointer-events:none}', '#region-map .place-marker{pointer-events:none}', '#region-map .place-marker-hit{pointer-events:visible']) {
